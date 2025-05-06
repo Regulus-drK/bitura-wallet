@@ -1,0 +1,11 @@
+{
+    "window.title": "BITURA WALLET - ${activeEditorShort}",
+    "workbench.colorCustomizations": {
+        "editor.background": "#1e1e1e",
+        "titleBar.activeBackground": "#10c269",
+        "titleBar.activeForeground": "#000000",
+        "titleBar.border": "#007032",
+        "titleBar.inactiveBackground": "#1af061",
+        "titleBar.inactiveForeground": "#000000"
+    }
+}
