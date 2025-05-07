@@ -12,12 +12,19 @@ npm install
 
 ### 📦 Cómo compilarlo para distribución
 
-Se puede compilar para las tres plataformas principales (Windows, Linux y MacOS), cambiando ligeramente el comando.
+Se puede compilar para las tres plataformas principales (Windows, Linux y macOS), cambiando ligeramente el comando.
 
+**Windows**
 ```bash
 npm run dist:win
+```
 
+**Linux**
+```bash
 npm run dist:linux
+```
 
+**macOS**
+```bash
 npm run dist:mac
 ```
