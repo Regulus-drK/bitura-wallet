@@ -1,7 +1,7 @@
 {
     "appId": "com.drankee.bitura",
     "productName": "Bitura Wallet",
-    "files": ["dist-electron", "dist-react"],
+    "files": ["dist-electron", "dist-react", "build"],
     "icon": "build/favicon.ico",
     "mac": {
         "target": "dmg",
