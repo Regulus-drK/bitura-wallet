@@ -13,6 +13,11 @@ dist-react
 dist-electron
 *.local
 
+# Ignorar JDKs embebebidos
+java/jdk-win
+java/jdk-linux
+java/jdk-mac
+
 # Editor directories and files
 .idea
 .DS_Store
