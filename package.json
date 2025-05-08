@@ -2,6 +2,7 @@
   "name": "bitura-wallet",
   "private": true,
   "version": "0.0.1",
+  "module": "ESNext",
   "type": "module",
   "main": "dist-electron/main.js",
   "author": "Jorge Puentes",
@@ -12,10 +13,10 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "transpile:electron": "tsc --project src/electron/tsconfig.json",
-    "dist:win": "npm run transpile:electron && npm run build && electron-builder --win --x64",
-    "dist:mac": "npm run transpile:electron && npm run build && electron-builder --mac --arm64",
-    "dist:linux": "npm run transpile:electron && npm run build && electron-builder --linux --x64"
+    "transpile:electron": "tsc --project src/electron/tsconfig.json && tsc --project src/electron/tsconfig.preload.json",
+    "dist:win": "npm run transpile:electron && npm run build && electron-builder --config electron-builder.win.json --win --x64",
+    "dist:mac": "npm run transpile:electron && npm run build && electron-builder --config electron-builder.mac.json --mac --arm64",
+    "dist:linux": "npm run transpile:electron && npm run build && electron-builder --config electron-builder.linux.json --linux --x64"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.5",

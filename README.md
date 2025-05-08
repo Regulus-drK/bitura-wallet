@@ -10,6 +10,8 @@ Para ejecutar el código, primero de todo se debe ejecutar el siguiente comando 
 npm install
 ```
 
+Una vez hecho, simplemente con pulsar **F5**, se ejecuta el programa.
+
 ### 📦 Cómo compilarlo para distribución
 
 Se puede compilar para las tres plataformas principales (Windows, Linux y macOS), cambiando ligeramente el comando.

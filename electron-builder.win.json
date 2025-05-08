@@ -1,0 +1,27 @@
+{
+    "appId": "com.drankee.bitura",
+    "productName": "Bitura Wallet",
+    "files": ["dist-electron", "dist-react", "build"],
+    "extraResources": [
+      {
+        "from": "java/BituraUtils.jar",
+        "to": "java/BituraUtils.jar"
+      },
+      {
+        "from": "java/jdk-win",
+        "to": "java/jdk-win"
+      }
+    ],
+    "icon": "build/favicon.ico",
+    "win": {
+      "target": ["portable", "nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+  

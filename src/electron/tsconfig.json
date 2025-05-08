@@ -3,8 +3,11 @@
         // require strict types (null-save)
         "strict": true,
         "target": "ESNext",
-        "module": "NodeNext",
+        "module": "ESNext",
+        "moduleResolution": "Node",
         "outDir": "../../dist-electron",
-        "skipLibCheck": true
-    }
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true
+    },
+    "include": ["./**/*.ts"]
 }

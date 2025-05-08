@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+      "module": "CommonJS",  // Usamos CommonJS para que Electron lo reconozca
+      "target": "ESNext",
+      "esModuleInterop": true,
+      "outDir": "../../dist-electron",  // El directorio de salida de los archivos compilados
+      "strict": true
+    },
+    "include": [
+      "./preload.ts"  // Incluye solo los archivos de Electron
+    ]
+  }
+  
