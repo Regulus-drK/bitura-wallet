@@ -22,7 +22,7 @@ function WalletSetup() {
 
     return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <h1>Configurada: No</h1>
+        <h1>Configuración</h1>
         <button className="flex items-center gap-2 bg-neutral-800 cursor-pointer hover:bg-neutral-900 select-none
             text-white font-semibold py-2 px-4 rounded-xl shadow-md border border-gray-500 transition duration-300"
             onClick={handleConfigureWallet}>

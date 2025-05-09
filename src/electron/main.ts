@@ -87,5 +87,7 @@ app.on("ready", () => {
     // Nuevo canal para establecer que la wallet ha sido configurada
     ipcMain.handle('wallet:setConfigured', (_event, value: boolean) => {
         store.set('walletConfigured', value);
+        mainWindow.webContents.send('wallet:configChanged', value); // Notificar a React
+        return true;
     });
 });
