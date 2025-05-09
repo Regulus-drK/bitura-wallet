@@ -1,7 +1,7 @@
 {
     "appId": "com.drankee.bitura",
     "productName": "Bitura Wallet",
-    "files": ["dist-electron", "dist-react", "build"],
+    "files": ["dist-electron", "dist-react", "src/assets"],
     "extraResources": [
       {
         "from": "java/BituraUtils.jar",
@@ -12,13 +12,13 @@
         "to": "java/jdk-mac"
       }
     ],
-    "icon": "build/logoBituraMac.png",
+    "icon": "src/assets/logoBituraMac.png",
     "mac": {
       "target": "dmg",
       "category": "public.app-category.utilities"
     },
     "dmg": {
-      "background": "build/dmg-background.png",
+      "background": "src/assets/dmg-background.png",
       "iconSize": 100,
       "contents": [
         { "x": 110, "y": 330 },

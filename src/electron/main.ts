@@ -1,14 +1,25 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
+import Store from 'electron-store';
 import path from 'path';
 import { isDev, getJdkPath, getJarPath } from './util.js';
 import { spawn } from 'child_process';
+
+interface WalletStore {
+  walletConfigured: boolean;
+};
+
+const store = new Store<WalletStore>({
+  defaults: {
+    walletConfigured: false
+  }
+});
 
 app.on("ready", () => {
     const mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
-        minWidth: 400,
-        minHeight: 300,
+        minWidth: 600,
+        minHeight: 450,
         webPreferences: {
             contextIsolation: true,
             preload: isDev()
@@ -66,5 +77,15 @@ app.on("ready", () => {
                 }
             });
         });
+    });
+
+    // Nuevo canal para consultar si está configurada la wallet
+    ipcMain.handle('wallet:isConfigured', () => {
+        return store.get('walletConfigured');
+    });
+
+    // Nuevo canal para establecer que la wallet ha sido configurada
+    ipcMain.handle('wallet:setConfigured', (_event, value: boolean) => {
+        store.set('walletConfigured', value);
     });
 });

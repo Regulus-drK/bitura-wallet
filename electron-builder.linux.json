@@ -1,7 +1,7 @@
 {
     "appId": "com.drankee.bitura",
     "productName": "Bitura Wallet",
-    "files": ["dist-electron", "dist-react", "build"],
+    "files": ["dist-electron", "dist-react", "src/assets"],
     "extraResources": [
       {
         "from": "java/BituraUtils.jar",
@@ -12,7 +12,7 @@
         "to": "java/jdk-linux"
       }
     ],
-    "icon": "build/favicon.ico",
+    "icon": "src/assets/favicon.ico",
     "linux": {
       "target": "AppImage",
       "category": "Utility"

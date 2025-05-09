@@ -3,8 +3,8 @@
         // require strict types (null-save)
         "strict": true,
         "target": "ESNext",
-        "module": "ESNext",
-        "moduleResolution": "Node",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
         "outDir": "../../dist-electron",
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true
