@@ -28,6 +28,7 @@ app.on("ready", () => {
             : path.join(app.getAppPath(), 'dist-electron', 'preload.js')        // cuando es en producción          
         }
     });
+    // mainWindow.setMenu(null);
     mainWindow.setMenuBarVisibility(false);
 
     if (isDev()) {

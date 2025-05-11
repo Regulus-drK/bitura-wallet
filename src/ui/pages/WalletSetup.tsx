@@ -1,25 +1,19 @@
 import { Import, SquarePlus } from 'lucide-react';
 import { useState } from 'react';
-import { setWalletConfigured } from '../../services/walletService';
 import logoBitura from '../../assets/LogotipoBituraPng.png'
 import { useWindowSize } from '../../hooks/useWindowSize';
 import { useWalletConfig } from '../../hooks/useWalletConfig';
 import WalletImportar from '../components/WalletImportar';
 import WalletCrear from '../components/WalletCrear';
 import WalletCrearVerificacion from '../components/WalletCrearVerificacion';
+import WalletCrearPassword from '../components/WalletCrearPassword';
  
 function WalletSetup() {
-
-    const [mode, setMode] = useState<'opciones' | 'importar' | 'crear' | 'verificacion' >('opciones');
+    const [mnemonic, setMnemonic] = useState<string[] | null>(null);
+    const [mode, setMode] = useState<
+    'opciones' | 'importar' | 'crear' | 'verificacion' | 'password'
+    >('opciones');
     const isConfigured = useWalletConfig();
-
-    const handleConfigureWallet = async () => {
-        // Ejemplo: después de configurar la wallet
-        await setWalletConfigured(true);
-    };
-
-    // Manejador del generador de Mnemonic
-
 
     useWindowSize({
         width: 800,
@@ -86,10 +80,24 @@ function WalletSetup() {
             <WalletCrear 
                 onBack={() => setMode('opciones')}
                 onNext={() => setMode('verificacion')}
+                mnemonic={mnemonic}
+                setMnemonic={setMnemonic}
             />
         )}
 
-        {mode === 'verificacion' && <WalletCrearVerificacion onBack={() => setMode('crear')}/>}
+        {mode === 'verificacion' && (
+            <WalletCrearVerificacion 
+                onBack={() => setMode('crear')}
+                onNext={() => setMode('password')}
+                mnemonic={mnemonic}
+            />
+        )}
+
+        {mode === 'password' && (
+            <WalletCrearPassword
+                onBack={() => setMode('verificacion')}
+            />
+        )}
     </div>
     );
 }

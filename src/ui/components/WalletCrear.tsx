@@ -5,13 +5,15 @@ import { generateMnemonic } from "../../services/walletService";
 interface WalletCrearProps {
     onBack: () => void;
     onNext: () => void;
+    mnemonic: string[] | null;
+    setMnemonic: (mnemonic: string[]) => void;
 }
 
-function WalletCrear({ onBack, onNext }: WalletCrearProps) {
-    const [mnemonic, setMnemonic] = useState<string[] | null>(null);
+function WalletCrear({ onBack, onNext, mnemonic, setMnemonic }: WalletCrearProps) {
     const [numPalabras, setNumPalabras] = useState('12');
     const [isSafelyStored, setIsSafelyStored] = useState(false);
 
+    // Manejador del generador de Mnemonic
     const handleGenerate = async () => {
         const result = await generateMnemonic(numPalabras as '12' | '24');
         setMnemonic(result);
@@ -29,31 +31,33 @@ function WalletCrear({ onBack, onNext }: WalletCrearProps) {
     return (
     <div className="min-h-[94vh] flex flex-col p-4 gap-4">
         {/* Sección de opciones (12/24 palabras) */}
-        <div className="mb-2 text-center">
-            <p className="font-semibold mb-2">Seleccione el número de palabras que tendrá su frase semilla:</p>
+        <div className="text-center">
+            <p className="text-lg font-semibold text-white mb-2">Seleccione el número de palabras que tendrá su frase semilla:</p>
             <div className="flex gap-4 justify-center">
-            <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                type="radio" 
-                name="numPalabras" 
-                value="12" 
-                checked={numPalabras === '12'} 
-                onChange={handleChange} 
-                className="accent-blue-600 cursor-pointer"
-                />
-                12 palabras
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                type="radio" 
-                name="numPalabras" 
-                value="24" 
-                checked={numPalabras === '24'} 
-                onChange={handleChange} 
-                className="accent-blue-600 cursor-pointer"
-                />
-                24 palabras
-            </label>
+                <label className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700
+                 text-white rounded-lg cursor-pointer shadow-md border border-gray-500 ">
+                    <input 
+                    type="radio" 
+                    name="numPalabras" 
+                    value="12" 
+                    checked={numPalabras === '12'} 
+                    onChange={handleChange} 
+                    className="accent-green-500 scale-125 cursor-pointer"
+                    />
+                    <span className="text-base">12 palabras</span>
+                </label>
+                <label className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700
+                 text-white rounded-lg cursor-pointer shadow-md border border-gray-500 ">
+                    <input 
+                    type="radio" 
+                    name="numPalabras" 
+                    value="24" 
+                    checked={numPalabras === '24'} 
+                    onChange={handleChange} 
+                    className="accent-green-500 scale-125 cursor-pointer"
+                    />
+                    <span className="text-base">24 palabras</span>
+                </label>
             </div>
         </div>
 
@@ -71,9 +75,10 @@ function WalletCrear({ onBack, onNext }: WalletCrearProps) {
         {/* Mostrar Mnemonic (si existe) */}
         {mnemonic && (
             <>
-                <div>
-                    <strong>Importante:</strong>
-                    <ul className="list-disc pl-2">
+                <div className="bg-neutral-600 border-l-4 border-gray-500 
+                text-white-900 p-4 rounded shadow-md max-w-3xl mx-auto">
+                    <strong className="block text-lg mb-2">Importante:</strong>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
                         <li>Por favor, escriba esta frase semilla en un papel, <strong>NUNCA</strong> en un dispositivo o almacenamiento online.</li>
                         <li><strong>JAMÁS</strong> comparta su frase semilla con alguien.</li>
                         <li>Si pierde el acceso a esta frase semilla, perderá <strong>todos</strong> sus activos (¡Guárdelo adecuadamente!).</li>
@@ -89,13 +94,13 @@ function WalletCrear({ onBack, onNext }: WalletCrearProps) {
                         ))}
                     </div>
                 </div>
-                <div className="flex items-center justify-center gap-4 mt-4">
-                    <label>
+                <div className="flex items-center justify-center gap-4">
+                    <label className="cursor-pointer">
                         <input 
                             type="checkbox"
                             checked={isSafelyStored}    
                             onChange={handleCheckbox}
-                            className="accent-blue-600 cursor-pointer mr-1.5 scale-110"
+                            className="accent-green-500 cursor-pointer mr-1.5 scale-110"
                         />
                         He guardado mi frase semilla en un lugar seguro.
                     </label>
