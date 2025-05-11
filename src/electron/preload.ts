@@ -1,10 +1,19 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
 contextBridge.exposeInMainWorld('api', {
+    setWindowSize: (options: { 
+        width: number, 
+        height: number,
+        minWidth?: number,
+        minHeight?: number,
+        maxWidth?: number,
+        maxHeight?: number,
+        resizable?: boolean
+    }) => ipcRenderer.invoke('window:setSize', options),
+    resetWindowSize: () => ipcRenderer.invoke('window:resetSize'),
     isWalletConfigured: () => ipcRenderer.invoke('wallet:isConfigured'),
     setWalletConfigured: (value: boolean) => {
-        console.log(`Estado actualizado a: ${value}`)
-        ipcRenderer.invoke('wallet:setConfigured', value) 
+        ipcRenderer.invoke('wallet:setConfigured', value); 
     },
     onWalletConfigChange: (callback: (value: boolean) => void) => {
         const listener = (_event: IpcRendererEvent, value: boolean) => {

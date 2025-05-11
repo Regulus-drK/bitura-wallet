@@ -1,67 +1,95 @@
-import { KeyRound } from 'lucide-react';
+import { Import, SquarePlus } from 'lucide-react';
 import { useState } from 'react';
-import { generateMnemonic, setWalletConfigured } from '../../services/walletService';
+import { setWalletConfigured } from '../../services/walletService';
+import logoBitura from '../../assets/LogotipoBituraPng.png'
+import { useWindowSize } from '../../hooks/useWindowSize';
+import { useWalletConfig } from '../../hooks/useWalletConfig';
+import WalletImportar from '../components/WalletImportar';
+import WalletCrear from '../components/WalletCrear';
+import WalletCrearVerificacion from '../components/WalletCrearVerificacion';
  
 function WalletSetup() {
-    const [mnemonic, setMnemonic] = useState<string[] | null>(null);
-    const [numPalabras, setNumPalabras] = useState('12');
+
+    const [mode, setMode] = useState<'opciones' | 'importar' | 'crear' | 'verificacion' >('opciones');
+    const isConfigured = useWalletConfig();
 
     const handleConfigureWallet = async () => {
         // Ejemplo: después de configurar la wallet
         await setWalletConfigured(true);
     };
 
-    const handleGenerate = async () => {
-        const result = await generateMnemonic(numPalabras as '12' | '24');
-        setMnemonic(result);
-    };
+    // Manejador del generador de Mnemonic
 
-    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setNumPalabras(event.target.value);
-    };
+
+    useWindowSize({
+        width: 800,
+        height: 650,
+        minWidth: 600,
+        minHeight: 450,
+        resizable: false
+    }, isConfigured);
 
     return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <h1>Configuración</h1>
-        <button className="flex items-center gap-2 bg-neutral-800 cursor-pointer hover:bg-neutral-900 select-none
-            text-white font-semibold py-2 px-4 rounded-xl shadow-md border border-gray-500 transition duration-300"
-            onClick={handleConfigureWallet}>
-            Configurar test
-        </button>
-        <div className='mb-4'>
-            <p className="font-semibold mb-2 text-center">Número de palabras:</p>
-            <div className="flex gap-4 justify-center">
-                <label className='flex items-center gap-2 cursor-pointer'>
-                    <input type='radio' name='numPalabras' value="12" checked={numPalabras === '12'} onChange={handleChange} className='accent-blue-600 cursor-pointer'/>
-                    12 palabras
-                </label>
-                <label className='flex items-center gap-2 cursor-pointer'>
-                    <input type='radio' name='numPalabras' value="24" checked={numPalabras === '24'} onChange={handleChange} className='accent-blue-600 cursor-pointer'/>
-                    24 palabras
-                </label>
+    <div className="min-h-screen flex flex-col p-4">
+        {mode === 'opciones' && (
+        <>
+            {/* Imagen centrada en la parte superior */}
+            <div className="flex justify-center mt-4 select-none">
+                <img 
+                    src={logoBitura} 
+                    alt="Logo Bitura" 
+                    className="w-115 h-40" // Ajusta el tamaño según necesites
+                />
             </div>
-        </div>
 
-        <button
-            onClick={handleGenerate}
-            className="flex items-center gap-2 bg-neutral-800 cursor-pointer hover:bg-neutral-900 select-none
-            text-white font-semibold py-2 px-4 rounded-xl shadow-md border border-gray-500 transition duration-300">
-            <KeyRound className="w-5 h-5" />
-            Generar Mnemonic
-        </button>
+            {/* Contenido principal en columnas (centrado verticalmente) */}
+            <div className="flex flex-col items-center justify-center gap-6"> 
 
-        {mnemonic && (
-            <div className="mt-6 p-4 border rounded border-gray-500 text-center shadow-md max-w-xl select-none">
-            <strong className="block mb-2">Mnemonic:</strong>
-            <div className="flex flex-wrap justify-center gap-2">
-                {mnemonic.map((word, index) => (
-                <span key={index} className="bg-neutral-900 px-2 py-1 rounded">
-                    {word}
-                </span>
-                ))}
+                <div className="text-center space-y-4 mb-8">
+                    <h1 className="text-2xl font-bold text-white bg-gradient-to-r from-green-500 to-emerald-700 
+                    py-3 px-6 rounded-lg shadow-lg inline-block m-6 mb-10">
+                        Bienvenido a la ventana de creación de su wallet
+                    </h1>
+                    
+                    <h2 className="text-xl text-gray-300 font-medium max-w-2xl mx-auto leading-relaxed">
+                        Seleccione una de las opciones para continuar con la configuración.
+                    </h2>
+                </div>
+
+                <div className='flex gap-6'>
+                    {/* Botones Ajustar cartera */}
+                    <button
+                        onClick={() => setMode('importar')}
+                        className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-900 cursor-pointer text-white 
+                        font-semibold py-8 px-10 rounded-xl shadow-md border border-gray-500 transition duration-300
+                        text-xl min-w-[300px] h-[60px] justify-center"
+                    >
+                        <Import className="w-6 h-6 relative top-[2px]" />
+                        Importar cartera
+                    </button>
+                    <button
+                        onClick={() => setMode('crear')}
+                        className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-900 cursor-pointer text-white 
+                        font-semibold py-8 px-10 rounded-xl shadow-md border border-gray-500 transition duration-300
+                        text-xl min-w-[300px] h-[60px] justify-center"
+                    >
+                        <SquarePlus className="w-6 h-6 relative top-[2px]" />
+                        Crear cartera
+                    </button>
+                </div>
             </div>
-            </div>
+        </>
         )}
+
+        {mode === 'importar' && <WalletImportar onBack={() => setMode('opciones')}/>}
+        {mode === 'crear' && (
+            <WalletCrear 
+                onBack={() => setMode('opciones')}
+                onNext={() => setMode('verificacion')}
+            />
+        )}
+
+        {mode === 'verificacion' && <WalletCrearVerificacion onBack={() => setMode('crear')}/>}
     </div>
     );
 }

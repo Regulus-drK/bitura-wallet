@@ -20,6 +20,7 @@ app.on("ready", () => {
         height: 600,
         minWidth: 600,
         minHeight: 450,
+        autoHideMenuBar: true,
         webPreferences: {
             contextIsolation: true,
             preload: isDev()
@@ -27,12 +28,32 @@ app.on("ready", () => {
             : path.join(app.getAppPath(), 'dist-electron', 'preload.js')        // cuando es en producción          
         }
     });
+    mainWindow.setMenuBarVisibility(false);
 
     if (isDev()) {
         mainWindow.loadURL('http://localhost:5123');
     } else {
         mainWindow.loadFile(path.join(app.getAppPath() + '/dist-react/index.html'));
     }
+    
+    ipcMain.handle('window:setSize', (_, options) => {
+        const win = BrowserWindow.getFocusedWindow();
+        if (!win) return;
+
+        win.setMinimumSize(options.minWidth || options.width, options.minHeight || options.height);
+        win.setMaximumSize(options.maxWidth, options.maxHeight);
+        win.setSize(options.width, options.height);
+        win.setResizable(options.resizable ?? false);
+    });
+
+    ipcMain.handle('window:resetSize', () => {
+        const win = BrowserWindow.getFocusedWindow();
+        if (!win) return;
+
+        win.setMinimumSize(600, 450); // Valores por defecto
+        win.setMaximumSize(999999, 999999);
+        win.setResizable(true);
+    });
 
     // Ejecución de Java JAR con JDK embebido
 
