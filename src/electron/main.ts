@@ -30,9 +30,9 @@ function createMainWindow(): BrowserWindow {
     });
 
     if (isDev()) {
-        mainWindow.loadURL('http://localhost:5123');
+        mainWindow.loadURL('http://localhost:5123'); // desarrollo
     } else {
-        mainWindow.loadFile(path.join(app.getAppPath(), 'dist-react/index.html'));
+        mainWindow.loadFile(path.join(app.getAppPath(), 'dist-react/index.html')); // producción
     }
 
     // mainWindow.setMenu(null);
@@ -59,6 +59,10 @@ app.on("ready", () => {
     // Creamos la ventana principal
     createMainWindow();
 
+    ipcMain.on('app/close', () => {
+        app.quit();
+    });
+
     ipcMain.handle('window:setSize', (_, options) => {
         const win = BrowserWindow.getFocusedWindow();
         if (!win) return;
@@ -77,6 +81,30 @@ app.on("ready", () => {
         win.setMaximumSize(999999, 999999);
         win.setResizable(true);
     });
+
+    // function reOpenWindow() {
+    //     const oldWindow = BrowserWindow.getFocusedWindow();
+    //     if (oldWindow) {
+    //         oldWindow.on('closed', () => {
+    //             const newWindow = createMainWindow();
+    //             newWindow.webContents.once('did-finish-load', () => {
+                    
+    //             });
+    //         });
+
+    //         oldWindow.close(); // Esto disparará el evento 'closed'
+    //     } else {
+    //         // En caso de que no haya ventana activa, simplemente la creamos
+    //         const newWindow = createMainWindow();
+    //         newWindow.webContents.once('did-finish-load', () => {
+                
+    //         });
+    //     }
+    // }
+
+    // ipcMain.handle('window:reOpen', () => {
+
+    // })
 
     // Ejecución de Java JAR con JDK embebido
 

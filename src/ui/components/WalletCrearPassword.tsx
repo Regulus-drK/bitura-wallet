@@ -1,6 +1,6 @@
 import { LogOut, Eye, EyeOff, Check, CheckCircle } from "lucide-react";
 import { useState } from "react";
-import { saveMnemonic, savePassword, setWalletConfigured } from "../../services/walletService";
+import { saveMnemonic, savePassword, setWalletConfigured } from "../../services/apiService";
 
 interface WalletCrearPasswordProps {
     onBack: () => void;

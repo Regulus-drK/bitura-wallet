@@ -1,6 +1,6 @@
 import { ArrowRight, KeyRound, LogOut } from "lucide-react";
 import { useState } from "react";
-import { generateMnemonic } from "../../services/walletService";
+import { generateMnemonic } from "../../services/apiService";
 
 interface WalletCrearProps {
     onBack: () => void;

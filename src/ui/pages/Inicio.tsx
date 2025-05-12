@@ -1,31 +1,63 @@
-import { useEffect, useState } from "react";
-import { getMnemonic, getPassword } from "../../services/walletService";
+import logoBitura from '../../assets/LogotipoBituraPng.png'
+import { LogOut } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useNavigate } from "react-router-dom";
+import { getMnemonic } from '../../services/apiService';
+import { createWallets } from '../../services/walletService';
 
 function Inicio() {
-  const [passRecuperada, setPassRecuperada] = useState<string | null>(null);
-  const [mnemonic, setMnemonic] = useState<string | null>(null);
+  const [bitcoinAddress, setBitcoinAddress] = useState<string | null>(null);
+  const [ethereumAddress, setEthereumAddress] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const logOut = () => {
+    navigate("/");
+  };
 
   useEffect(() => {
-    const loadPassword = async () => {
-      const pwd = await getPassword();
-      setPassRecuperada(pwd);
-    };
-
-    const loadMnemonic = async () => {
-      const mnemonic = await getMnemonic();
-      setMnemonic(mnemonic);
+    async function loadWallets() {
+      try {
+        const mnemonic = await getMnemonic();
+        const wallets = createWallets(mnemonic, 0);
+        if (wallets) {
+          setBitcoinAddress(wallets.bitcoin.address);
+          setEthereumAddress(wallets.ethereum.address);
+        }
+      } catch (err) {
+        console.error('Error al cargar la wallet:', err);
+      }
     }
 
-    loadPassword();
-    loadMnemonic();
+    loadWallets();
   }, []);
-
+  
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-2">
+      <div className="flex justify-center mt-4 select-none">
+        <img 
+          src={logoBitura} 
+          alt="Logo Bitura" 
+          className="w-115 h-40"
+        />
+      </div>
+
       <h1>¡Bienvenido a la aplicación de criptomonedas!</h1>
-      <p>La wallet está configurada.</p>
-      <p>Contraseña recuperada: {passRecuperada ?? 'No disponible'}</p>
-      <p>Mnemonic recuperada: {mnemonic ?? 'No disponible'}</p>
+      <p>Ha iniciado sesión correctamente.</p>
+
+      {bitcoinAddress && (
+        <p><strong>Bitcoin:</strong> {bitcoinAddress}</p>
+      )}
+      {ethereumAddress && (
+        <p><strong>Ethereum:</strong> {ethereumAddress}</p>
+      )}
+
+      <button
+        onClick={logOut}
+        className="px-4 py-2 mt-4 rounded-xl shadow-md border flex items-center gap-2 transition duration-300 cursor-pointer"
+      >
+        <LogOut className="w-5 h-5"/>
+        Cerrar sesión
+      </button>
     </div>
   );
 }

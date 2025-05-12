@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { isWalletConfigured, onWalletConfigChange } from "../services/walletService";
+import { isWalletConfigured, onWalletConfigChange } from "../services/apiService";
 
 export function useWalletConfig() {
     const [isConfigured, setIsConfigured] = useState(false);

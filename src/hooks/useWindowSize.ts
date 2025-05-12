@@ -31,5 +31,5 @@ export function useWindowSize(options?: {
         window.api.resetWindowSize().catch(() => {});
       }
     };
-  }, [dependency]); // Se puede añadir como [dependency ?? true] si en algun momento no hay dependencia
+  }, [dependency ?? true]); // Se puede añadir como [dependency ?? true] si en algun momento no hay dependencia
 }

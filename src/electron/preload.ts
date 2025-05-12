@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
 contextBridge.exposeInMainWorld('api', {
+    closeApp: () => ipcRenderer.send('app/close'),
     setWindowSize: (options: { 
         width: number, 
         height: number,
@@ -28,7 +29,7 @@ contextBridge.exposeInMainWorld('api', {
     },
     generateMnemonic: (args: string) => ipcRenderer.invoke('java:generateMnemonic', args),
     savePassword: (password: string) => ipcRenderer.invoke('wallet:savePassword', password),
-    getPassword: () => ipcRenderer.invoke('wallet:getPassword'),
+    // getPassword: () => ipcRenderer.invoke('wallet:getPassword'), // Desactivados para el front (de momento, al menos)
     saveMnemonic: (mnemonic: string) => ipcRenderer.invoke('wallet:saveMnemonic', mnemonic),
     getMnemonic: () => ipcRenderer.invoke('wallet:getMnemonic'),
     validatePassword: (inputPassword: string) => ipcRenderer.invoke('wallet:validatePassword', inputPassword),
