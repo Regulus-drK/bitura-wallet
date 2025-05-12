@@ -14,6 +14,33 @@ const store = new Store<WalletStore>({
   }
 });
 
+function createMainWindow(): BrowserWindow {
+    const mainWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        minWidth: 600,
+        minHeight: 450,
+        autoHideMenuBar: true,
+        webPreferences: {
+            contextIsolation: true,
+            preload: isDev()
+                ? path.join(process.cwd(), 'dist-electron', 'preload.js')
+                : path.join(app.getAppPath(), 'dist-electron', 'preload.js')
+        }
+    });
+
+    if (isDev()) {
+        mainWindow.loadURL('http://localhost:5123');
+    } else {
+        mainWindow.loadFile(path.join(app.getAppPath(), 'dist-react/index.html'));
+    }
+
+    // mainWindow.setMenu(null);
+    mainWindow.setMenuBarVisibility(false);
+
+    return mainWindow;
+}
+
 app.on("ready", () => {
     if (!safeStorage.isEncryptionAvailable()) {
         dialog.showErrorBox(
@@ -29,27 +56,8 @@ app.on("ready", () => {
         return;
     }
 
-    const mainWindow = new BrowserWindow({
-        width: 800,
-        height: 600,
-        minWidth: 600,
-        minHeight: 450,
-        autoHideMenuBar: true,
-        webPreferences: {
-            contextIsolation: true,
-            preload: isDev()
-            ? path.join(process.cwd(), 'dist-electron', 'preload.js')           // cuando es en desarrollo
-            : path.join(app.getAppPath(), 'dist-electron', 'preload.js')        // cuando es en producción          
-        }
-    });
-    // mainWindow.setMenu(null);
-    mainWindow.setMenuBarVisibility(false);
-
-    if (isDev()) {
-        mainWindow.loadURL('http://localhost:5123');
-    } else {
-        mainWindow.loadFile(path.join(app.getAppPath() + '/dist-react/index.html'));
-    }
+    // Creamos la ventana principal
+    createMainWindow();
 
     ipcMain.handle('window:setSize', (_, options) => {
         const win = BrowserWindow.getFocusedWindow();
@@ -123,12 +131,31 @@ app.on("ready", () => {
     // Nuevo canal para establecer que la wallet ha sido configurada
     ipcMain.handle('wallet:setConfigured', (_event, value: boolean) => {
         store.set('walletConfigured', value);
-        mainWindow.webContents.send('wallet:configChanged', value); // Notificar a React
+
+        const oldWindow = BrowserWindow.getFocusedWindow();
+        if (oldWindow) {
+            oldWindow.on('closed', () => {
+                const newWindow = createMainWindow();
+                newWindow.webContents.once('did-finish-load', () => {
+                    newWindow.webContents.send('wallet:configChanged', value);
+                });
+            });
+
+            oldWindow.close(); // Esto disparará el evento 'closed'
+        } else {
+            // En caso de que no haya ventana activa, simplemente la creamos
+            const newWindow = createMainWindow();
+            newWindow.webContents.once('did-finish-load', () => {
+                newWindow.webContents.send('wallet:configChanged', value);
+            });
+        }
+
         return true;
     });
 
     ipcMain.handle('wallet:savePassword', (_event, password: string) => {
         savePassword(password);
+        return true;
     });
 
     ipcMain.handle('wallet:getPassword', () => {
@@ -136,7 +163,8 @@ app.on("ready", () => {
     });
 
     ipcMain.handle('wallet:saveMnemonic', (_event, mnemonic: string) => {
-        return saveMnemonic(mnemonic);
+        saveMnemonic(mnemonic);
+        return true;
     });
 
     ipcMain.handle('wallet:getMnemonic', () => {
@@ -159,26 +187,6 @@ app.on("window-all-closed", () => {
 // En macOS, vuelve a crear la ventana al hacer clic en el icono del dock
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    const mainWindow = new BrowserWindow({
-      width: 800,
-      height: 600,
-      minWidth: 600,
-      minHeight: 450,
-      autoHideMenuBar: true,
-      webPreferences: {
-        contextIsolation: true,
-        preload: isDev()
-          ? path.join(process.cwd(), 'dist-electron', 'preload.js')
-          : path.join(app.getAppPath(), 'dist-electron', 'preload.js')
-      }
-    });
-
-    if (isDev()) {
-      mainWindow.loadURL('http://localhost:5123');
-    } else {
-      mainWindow.loadFile(path.join(app.getAppPath() + '/dist-react/index.html'));
-    }
-
-    mainWindow.setMenuBarVisibility(false);
+    createMainWindow();
   }
 });
