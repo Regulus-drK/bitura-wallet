@@ -18,7 +18,7 @@ function Inicio() {
     async function loadWallets() {
       try {
         const mnemonic = await getMnemonic();
-        const wallets = createWallets(mnemonic, 0);
+        const wallets = createWallets(mnemonic, 2);
         if (wallets) {
           setBitcoinAddress(wallets.bitcoin.address);
           setEthereumAddress(wallets.ethereum.address);

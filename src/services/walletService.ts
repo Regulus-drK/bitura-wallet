@@ -32,7 +32,7 @@ export function createWallets(mnemonic: string | null, index: number, testnet?: 
     const root = bip32.fromSeed(binSeed);
 
     // Para Bitcoin Testnet
-    const pathBitcoin = `m/44'/1'/0'/0/${index}`; // BIP44 - BTC Testnet
+    const pathBitcoin = `m/44'/0'/0'/0/${index}`; // BIP44 - BTC Testnet
     const childBitcoin = root.derivePath(pathBitcoin);
     const { address: addressBitcoin } = bitcoin.payments.p2pkh({ 
         pubkey: Buffer.from(childBitcoin.publicKey),
@@ -43,7 +43,7 @@ export function createWallets(mnemonic: string | null, index: number, testnet?: 
     const pathEthereum = `m/44'/60'/0'/0/${index}`; // BIP44 - Ethereum
     const childEthereum = root.derivePath(pathEthereum);
 
-        // Verificar que la clave privada de Ethereum no es undefined
+    // Verificar que la clave privada de Ethereum no es undefined
     if (!childEthereum.privateKey) {
         throw new Error('Clave privada de Ethereum no disponible');
     }
