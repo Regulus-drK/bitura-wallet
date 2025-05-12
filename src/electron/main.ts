@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron';
 import Store from 'electron-store';
 import path from 'path';
-import { isDev, getJdkPath, getJarPath } from './util.js';
+import { isDev, getJdkPath, getJarPath, savePassword, getPassword, saveMnemonic, getMnemonic } from './util.js';
 import { spawn } from 'child_process';
 
 interface WalletStore {
@@ -15,6 +15,20 @@ const store = new Store<WalletStore>({
 });
 
 app.on("ready", () => {
+    if (!safeStorage.isEncryptionAvailable()) {
+        dialog.showErrorBox(
+            "Cifrado no disponible",
+            `No se pudo activar el almacenamiento seguro en este sistema.
+            
+        Posibles soluciones:
+            - Asegúrese de estar en sesión (Windows).
+            - Inicie un gestor de llaveros como gnome-keyring (Linux).
+            - Desbloquee el llavero (macOS).`
+        );
+        app.quit();
+        return;
+    }
+
     const mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
@@ -36,7 +50,7 @@ app.on("ready", () => {
     } else {
         mainWindow.loadFile(path.join(app.getAppPath() + '/dist-react/index.html'));
     }
-    
+
     ipcMain.handle('window:setSize', (_, options) => {
         const win = BrowserWindow.getFocusedWindow();
         if (!win) return;
@@ -112,4 +126,59 @@ app.on("ready", () => {
         mainWindow.webContents.send('wallet:configChanged', value); // Notificar a React
         return true;
     });
+
+    ipcMain.handle('wallet:savePassword', (_event, password: string) => {
+        savePassword(password);
+    });
+
+    ipcMain.handle('wallet:getPassword', () => {
+        return getPassword();
+    });
+
+    ipcMain.handle('wallet:saveMnemonic', (_event, mnemonic: string) => {
+        return saveMnemonic(mnemonic);
+    });
+
+    ipcMain.handle('wallet:getMnemonic', () => {
+        return getMnemonic();
+    });
+
+    ipcMain.handle('wallet:validatePassword', async (_event, inputPassword: string) => {
+        const savedPassword = getPassword();
+        return savedPassword === inputPassword;
+    });
+});
+
+// Cierra completamente la aplicación excepto en macOS
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
+
+// En macOS, vuelve a crear la ventana al hacer clic en el icono del dock
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    const mainWindow = new BrowserWindow({
+      width: 800,
+      height: 600,
+      minWidth: 600,
+      minHeight: 450,
+      autoHideMenuBar: true,
+      webPreferences: {
+        contextIsolation: true,
+        preload: isDev()
+          ? path.join(process.cwd(), 'dist-electron', 'preload.js')
+          : path.join(app.getAppPath(), 'dist-electron', 'preload.js')
+      }
+    });
+
+    if (isDev()) {
+      mainWindow.loadURL('http://localhost:5123');
+    } else {
+      mainWindow.loadFile(path.join(app.getAppPath() + '/dist-react/index.html'));
+    }
+
+    mainWindow.setMenuBarVisibility(false);
+  }
 });

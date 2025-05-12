@@ -96,6 +96,7 @@ function WalletSetup() {
         {mode === 'password' && (
             <WalletCrearPassword
                 onBack={() => setMode('verificacion')}
+                mnemonic={mnemonic}
             />
         )}
     </div>

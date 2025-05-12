@@ -1,43 +1,56 @@
 import { LogOut, Eye, EyeOff, Check, CheckCircle } from "lucide-react";
 import { useState } from "react";
-import { setWalletConfigured } from "../../services/walletService";
+import { saveMnemonic, savePassword, setWalletConfigured } from "../../services/walletService";
 
 interface WalletCrearPasswordProps {
     onBack: () => void;
-
+    mnemonic: string[] | null;
 }
 
-function WalletCrearPassword({ onBack }: WalletCrearPasswordProps) {
+function WalletCrearPassword({ onBack, mnemonic }: WalletCrearPasswordProps) {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [password, setPassword] = useState<string | null>(null);
     const [confirmPassword, setConfirmPassword] = useState<string | null>(null);
     const [checkPasswords, setCheckPasswords] = useState<boolean | null>(null);
+    const [isPassSecure, setIsPassSecure] = useState<boolean | null>(null);
+    const [buttonsDisabled, setButtonsDisabled] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
     const handleConfigureWallet = async () => {
         setShowSuccess(true);
 
-        setTimeout(async () => {
-            // await setWalletConfigured(true);
-            console.log('Ahora se pondría a true la config')
-        }, 4000)
+        const mnemonicString = mnemonic?.join(' ');
+        // Para reconvertirlo, es con .split
+
+        savePassword(password!);
+        saveMnemonic(mnemonicString!);
 
         setTimeout(() => setShowSuccess(false), 3000);
+
+        setTimeout(async () => {
+            await setWalletConfigured(true);
+            // console.log('Ahora se pondría a true la config')
+        }, 4000);
     };
 
     const handleCheckPasswords = () => {
         if (!password || !confirmPassword) return;
 
+        const hasSpecialChar = /[^A-Za-z0-9]/.test(password); // al menos un carácter no alfanumérico
+
         if (password === confirmPassword) {
+            if (password.length < 7 || !hasSpecialChar) {
+                setIsPassSecure(false);
+                return;
+            }
             setCheckPasswords(true);
+            setButtonsDisabled(true);
             handleConfigureWallet();
         } else {
             setCheckPasswords(false);
         }
     }
-
-    const isButtonDisabled = !password || !confirmPassword;
 
     return (
         <div className="min-h-[94vh] flex flex-col p-4 gap-6 relative">
@@ -59,6 +72,7 @@ function WalletCrearPassword({ onBack }: WalletCrearPasswordProps) {
                         onChange={(e) => {
                             setPassword(e.target.value);
                             setCheckPasswords(null);
+                            setIsPassSecure(null);
                         }}
                         className="w-full gap-2 bg-neutral-800 hover:bg-neutral-900 
                         text-white font-semibold py-1 px-6 rounded-xl shadow-md border border-gray-500 
@@ -84,6 +98,7 @@ function WalletCrearPassword({ onBack }: WalletCrearPasswordProps) {
                         onChange={(e) => {
                             setConfirmPassword(e.target.value); 
                             setCheckPasswords(null);
+                            setIsPassSecure(null);
                         }}
                         className="w-full gap-2 bg-neutral-800 hover:bg-neutral-900 
                         text-white font-semibold py-1 px-6 rounded-xl shadow-md border border-gray-500 
@@ -102,9 +117,9 @@ function WalletCrearPassword({ onBack }: WalletCrearPasswordProps) {
                 <div className="mt-10 flex flex-col items-center text-center">
                     <button
                         onClick={handleCheckPasswords}
-                        disabled={isButtonDisabled}
+                        disabled={buttonsDisabled || !password || !confirmPassword}
                         className={`px-4 py-2 rounded-xl shadow-md border flex items-center gap-2 transition duration-300
-                            ${isButtonDisabled 
+                            ${(buttonsDisabled || !password || !confirmPassword) 
                                 ? "bg-neutral-600 text-gray-300 cursor-not-allowed border-gray-400" 
                                 : "border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"}`
                         }
@@ -118,6 +133,13 @@ function WalletCrearPassword({ onBack }: WalletCrearPasswordProps) {
                 {checkPasswords === false && (
                     <h2 className="text-center mt-4 text-lg font-semibold text-red-500">
                         Las contraseñas no coinciden.
+                    </h2>
+                )}
+
+                {/* Info. estado contraseñas introducidas */}
+                {isPassSecure === false && (
+                    <h2 className="text-center mt-4 text-lg font-semibold text-red-500">
+                        La contraseña debe tener al menos 7 caracteres y contener al menos un carácter especial.
                     </h2>
                 )}
             </div>
@@ -137,9 +159,12 @@ function WalletCrearPassword({ onBack }: WalletCrearPasswordProps) {
             {/* Botón Volver */}
             <button
                 onClick={onBack}
-                className="mt-auto flex items-center gap-2 bg-neutral-800 hover:bg-neutral-900 
-                text-white font-semibold py-2 px-4 rounded-xl shadow-md border border-gray-500 
-                transition duration-300 cursor-pointer"
+                disabled={buttonsDisabled}
+                className={`mt-auto flex items-center gap-2 font-semibold 
+                py-2 px-4 rounded-xl shadow-md border transition duration-300
+                ${(buttonsDisabled) 
+                ? "bg-neutral-600 text-gray-300 cursor-not-allowed border-gray-400" 
+                : "border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"}`}
             >
                 <LogOut className="w-5 h-5" />
                 Cancelar

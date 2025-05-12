@@ -27,4 +27,9 @@ contextBridge.exposeInMainWorld('api', {
         };
     },
     generateMnemonic: (args: string) => ipcRenderer.invoke('java:generateMnemonic', args),
+    savePassword: (password: string) => ipcRenderer.invoke('wallet:savePassword', password),
+    getPassword: () => ipcRenderer.invoke('wallet:getPassword'),
+    saveMnemonic: (mnemonic: string) => ipcRenderer.invoke('wallet:saveMnemonic', mnemonic),
+    getMnemonic: () => ipcRenderer.invoke('wallet:getMnemonic'),
+    validatePassword: (inputPassword: string) => ipcRenderer.invoke('wallet:validatePassword', inputPassword),
 });
