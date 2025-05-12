@@ -20,6 +20,7 @@ function Inicio() {
         const mnemonic = await getMnemonic();
         const wallets = createWallets(mnemonic, 2);
         if (wallets) {
+          console.log(mnemonic)
           setBitcoinAddress(wallets.bitcoin.address);
           setEthereumAddress(wallets.ethereum.address);
         }

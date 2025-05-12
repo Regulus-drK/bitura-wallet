@@ -10,9 +10,11 @@ import WalletCrearPassword from '../components/WalletCrearPassword';
  
 function WalletSetup() {
     const [mnemonic, setMnemonic] = useState<string[] | null>(null);
+    const [mnemonicImportado, setMnemonicImportado] = useState<string[] | null>(null);
     const [mode, setMode] = useState<
     'opciones' | 'importar' | 'crear' | 'verificacion' | 'password'
     >('opciones');
+    const [origenPassword, setOrigenPassword] = useState<'importar' | 'verificacion' | null>(null);
     const isConfigured = useWalletConfig();
 
     useWindowSize({
@@ -75,7 +77,16 @@ function WalletSetup() {
         </>
         )}
 
-        {mode === 'importar' && <WalletImportar onBack={() => setMode('opciones')}/>}
+        {mode === 'importar' && (
+            <WalletImportar 
+                onBack={() => setMode('opciones')}
+                onNext={() => {
+                    setOrigenPassword('importar');
+                    setMode('password')
+                }}
+                setMnemonicImportado={setMnemonicImportado}
+            />
+        )}
         {mode === 'crear' && (
             <WalletCrear 
                 onBack={() => setMode('opciones')}
@@ -88,15 +99,24 @@ function WalletSetup() {
         {mode === 'verificacion' && (
             <WalletCrearVerificacion 
                 onBack={() => setMode('crear')}
-                onNext={() => setMode('password')}
+                onNext={() => {
+                    setOrigenPassword('verificacion');
+                    setMode('password');
+                }}
                 mnemonic={mnemonic}
             />
         )}
 
         {mode === 'password' && (
             <WalletCrearPassword
-                onBack={() => setMode('verificacion')}
-                mnemonic={mnemonic}
+                onBack={() => {
+                    if (origenPassword === 'importar') {
+                        setMode('importar');
+                    } else {
+                        setMode('verificacion');
+                    }
+                }}               
+                mnemonic={origenPassword === 'importar' ? mnemonicImportado : mnemonic}
             />
         )}
     </div>

@@ -8,8 +8,8 @@ import { Buffer } from 'buffer';
 // Crear instancia de bip32 con tiny-secp256k1
 const bip32 = BIP32Factory(ecc);
 
-function validarMnemonic(mnemonic: string) {
-    if (!bip39.validateMnemonic(mnemonic)) throw new Error('Frase semilla inválida');
+export function validarMnemonic(mnemonic: string): boolean {
+    return bip39.validateMnemonic(mnemonic);
 }
 
 /**
@@ -23,7 +23,8 @@ export function createWallets(mnemonic: string | null, index: number, testnet?: 
         network = bitcoin.networks.testnet;
     }
     if (!mnemonic) return;
-    validarMnemonic(mnemonic);
+
+    if (!validarMnemonic(mnemonic)) return;
 
     // Convertir la frase semilla en una semilla binaria
     const binSeed = bip39.mnemonicToSeedSync(mnemonic);
