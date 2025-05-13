@@ -1,4 +1,4 @@
-import { ArrowRight, LogOut } from "lucide-react";
+import { ArrowRight, LogOut, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { validarMnemonic } from "../../services/walletService";
 import { walletShouldBeConfigured } from "../../hooks/walletShouldBeConfigured";
@@ -27,6 +27,12 @@ function WalletImportar({ onBack, onNext, setMnemonicImportado }: WalletImportar
         setInputs(updatedInputs);
 
         setSinRellenar(updatedInputs.some(palabra => palabra.trim() === ""));
+    };
+
+    const handleReset = () => {
+        setInputs(Array(parseInt(numPalabras)).fill(""));
+        setInvalidMnemonic(false);
+        setSinRellenar(true);
     };
 
     const handleSubmit = () => {
@@ -110,7 +116,16 @@ function WalletImportar({ onBack, onNext, setMnemonicImportado }: WalletImportar
             ))}
         </div>
 
-        <div className="flex flex-col items-center text-center">
+        <div className="flex justify-center gap-4">
+            <button
+                onClick={handleReset}
+                className="flex items-center gap-2 font-semibold py-2 px-5 rounded-xl shadow-md border 
+                transition duration-300 bg-neutral-800 hover:bg-neutral-900 text-white border-gray-500 cursor-pointer"
+            >
+            <RotateCcw className="w-5 h-5" />
+            Reiniciar
+            </button>
+
             <button
                 onClick={handleSubmit}
                 disabled={sinRellenar}

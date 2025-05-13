@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogOut, CheckCircle, ArrowRight } from "lucide-react";
+import { LogOut, CheckCircle, ArrowRight, RotateCcw } from "lucide-react";
 import { walletShouldBeConfigured } from "../../hooks/walletShouldBeConfigured";
 
 interface WalletCrearVerificacionProps {
@@ -101,9 +101,10 @@ function WalletCrearVerificacion({ onBack, onNext, mnemonic }: WalletCrearVerifi
         </button>
         <button
           onClick={handleReset}
-          className="px-4 py-2 rounded-xl shadow-md border border-gray-500 bg-neutral-800
+          className="flex px-4 py-2 gap-2 rounded-xl shadow-md border border-gray-500 bg-neutral-800
         text-white hover:bg-neutral-900 cursor-pointer"
         >
+          <RotateCcw className="relative top-[2px] w-5 h-5" />
           Reiniciar
         </button>
       </div>
