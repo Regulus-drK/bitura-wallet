@@ -1,6 +1,7 @@
 import { LogOut, Eye, EyeOff, Check, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { saveMnemonic, savePassword, setWalletConfigured } from "../../services/apiService";
+import { walletShouldBeConfigured } from "../../hooks/walletShouldBeConfigured";
 
 interface WalletCrearPasswordProps {
     onBack: () => void;
@@ -16,6 +17,8 @@ function WalletCrearPassword({ onBack, mnemonic }: WalletCrearPasswordProps) {
     const [isPassSecure, setIsPassSecure] = useState<boolean | null>(null);
     const [buttonsDisabled, setButtonsDisabled] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+
+    walletShouldBeConfigured(false);
 
     const handleConfigureWallet = async () => {
         setShowSuccess(true);

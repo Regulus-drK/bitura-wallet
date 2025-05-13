@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { LogOut, CheckCircle, ArrowRight } from "lucide-react";
+import { walletShouldBeConfigured } from "../../hooks/walletShouldBeConfigured";
 
 interface WalletCrearVerificacionProps {
   onBack: () => void;
@@ -11,6 +12,8 @@ function WalletCrearVerificacion({ onBack, onNext, mnemonic }: WalletCrearVerifi
   const [palabrasMezcladas, setPalabrasMezcladas] = useState<string[]>([]);
   const [palabrasSeleccionadas, setPalabrasSeleccionadas] = useState<string[]>([]);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+
+  walletShouldBeConfigured(false);
 
   useEffect(() => {
     if (mnemonic) {

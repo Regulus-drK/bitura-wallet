@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { validatePassword } from "../../services/apiService";
+import { useEffect, useState } from "react";
+import { disableMenu, validatePassword } from "../../services/apiService";
 import logoBitura from '../../assets/LogotipoBituraPng.png'
 import { useWindowSize } from "../../hooks/useWindowSize";
 import { Eye, EyeOff, LogIn, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { walletShouldBeConfigured } from "../../hooks/walletShouldBeConfigured";
 
 function Login() {
     const [loginSuccessful, setLoginSuccessful] = useState<boolean | undefined>(undefined);
@@ -11,6 +12,12 @@ function Login() {
     const [showPassword, setShowPassword] = useState(false);
 
     const navigate = useNavigate();
+
+    walletShouldBeConfigured(true);
+
+    useEffect(() => {
+        disableMenu();
+    });
 
     const handleVerifyLogin = async () => {
         if (await validatePassword(password!)) {

@@ -1,4 +1,12 @@
 
+export function enableMenu(): void {
+  window.api.enableMenu();
+}
+
+export function disableMenu(): void {
+  window.api.disableMenu();
+}
+
 export async function generateMnemonic(numWords: '12' | '24'): Promise<string[]> {
     try {
         const result = await window.api.generateMnemonic(numWords);
@@ -57,3 +65,4 @@ export async function validatePassword(inputPassword: string): Promise<boolean> 
   }
   return true;
 }
+

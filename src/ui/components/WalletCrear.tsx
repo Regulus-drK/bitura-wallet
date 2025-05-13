@@ -1,6 +1,7 @@
 import { ArrowRight, KeyRound, LogOut } from "lucide-react";
 import { useState } from "react";
 import { generateMnemonic } from "../../services/apiService";
+import { walletShouldBeConfigured } from "../../hooks/walletShouldBeConfigured";
 
 interface WalletCrearProps {
     onBack: () => void;
@@ -12,6 +13,8 @@ interface WalletCrearProps {
 function WalletCrear({ onBack, onNext, mnemonic, setMnemonic }: WalletCrearProps) {
     const [numPalabras, setNumPalabras] = useState('12');
     const [isSafelyStored, setIsSafelyStored] = useState(false);
+
+    walletShouldBeConfigured(false);
 
     // Manejador del generador de Mnemonic
     const handleGenerate = async () => {

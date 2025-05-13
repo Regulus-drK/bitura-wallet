@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('api', {
         resizable?: boolean
     }) => ipcRenderer.invoke('window:setSize', options),
     resetWindowSize: () => ipcRenderer.invoke('window:resetSize'),
+    enableMenu: () => ipcRenderer.send('window:enableMenu'),
+    disableMenu: () => ipcRenderer.send('window:disableMenu'),
     isWalletConfigured: () => ipcRenderer.invoke('wallet:isConfigured'),
     setWalletConfigured: (value: boolean) => {
         ipcRenderer.invoke('wallet:setConfigured', value); 

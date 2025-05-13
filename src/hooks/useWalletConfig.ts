@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { isWalletConfigured, onWalletConfigChange } from "../services/apiService";
 
 export function useWalletConfig() {
-    const [isConfigured, setIsConfigured] = useState(false);
+    const [isConfigured, setIsConfigured] = useState<boolean | undefined>(undefined);;
 
     useEffect(() => {
         const loadConfigInicial = async () => {

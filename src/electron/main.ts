@@ -1,8 +1,9 @@
-import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage } from 'electron';
 import Store from 'electron-store';
 import path from 'path';
 import { isDev, getJdkPath, getJarPath, savePassword, getPassword, saveMnemonic, getMnemonic } from './util.js';
 import { spawn } from 'child_process';
+import { MenuBar } from './MenuBar.js';
 
 interface WalletStore {
   walletConfigured: boolean;
@@ -20,7 +21,7 @@ function createMainWindow(): BrowserWindow {
         height: 600,
         minWidth: 600,
         minHeight: 450,
-        autoHideMenuBar: true,
+        // autoHideMenuBar: true,
         webPreferences: {
             contextIsolation: true,
             preload: isDev()
@@ -35,8 +36,13 @@ function createMainWindow(): BrowserWindow {
         mainWindow.loadFile(path.join(app.getAppPath(), 'dist-react/index.html')); // producción
     }
 
+    
+    // // Establecer el menú de la aplicación
+    // const menu = MenuBar.buildMenu(); // Usamos el método buildMenu para construir el menú
+    // Menu.setApplicationMenu(menu); // Asigna el menú a la aplicación
+
     // mainWindow.setMenu(null);
-    mainWindow.setMenuBarVisibility(false);
+    // mainWindow.setMenuBarVisibility(false);
 
     return mainWindow;
 }
@@ -81,6 +87,24 @@ app.on("ready", () => {
         win.setMaximumSize(999999, 999999);
         win.setResizable(true);
     });
+
+    ipcMain.on('window:enableMenu', () => {
+        const win = BrowserWindow.getFocusedWindow();
+        if (!win) return;
+
+        // Establecer el menú de la aplicación
+        const menu = MenuBar.buildMenu(); // Usamos el método buildMenu para construir el menú
+        Menu.setApplicationMenu(menu); // Asigna el menú a la aplicación
+        win.setMenuBarVisibility(true);
+    })
+
+    ipcMain.on('window:disableMenu', () => {
+        const win = BrowserWindow.getFocusedWindow();
+        if (!win) return;
+
+        Menu.setApplicationMenu(null); // Elimina el menú global
+        win.setMenuBarVisibility(false);
+    })
 
     // function reOpenWindow() {
     //     const oldWindow = BrowserWindow.getFocusedWindow();

@@ -2,32 +2,35 @@ import logoBitura from '../../assets/LogotipoBituraPng.png'
 import { LogOut } from "lucide-react";
 import { useEffect, useState } from 'react';
 import { useNavigate } from "react-router-dom";
-import { getMnemonic } from '../../services/apiService';
+import { enableMenu, getMnemonic } from '../../services/apiService';
 import { createWallets } from '../../services/walletService';
+import { walletShouldBeConfigured } from '../../hooks/walletShouldBeConfigured';
 
 function Inicio() {
   const [bitcoinAddress, setBitcoinAddress] = useState<string | null>(null);
   const [ethereumAddress, setEthereumAddress] = useState<string | null>(null);
   const navigate = useNavigate();
+  
+  walletShouldBeConfigured(true);
 
   const logOut = () => {
     navigate("/");
   };
 
   useEffect(() => {
-    async function loadWallets() {
+    enableMenu();
+    const loadWallets = async () => {
       try {
         const mnemonic = await getMnemonic();
-        const wallets = createWallets(mnemonic, 2);
+        const wallets = createWallets(mnemonic, 1, true);
         if (wallets) {
-          console.log(mnemonic)
           setBitcoinAddress(wallets.bitcoin.address);
           setEthereumAddress(wallets.ethereum.address);
         }
       } catch (err) {
         console.error('Error al cargar la wallet:', err);
       }
-    }
+    };
 
     loadWallets();
   }, []);

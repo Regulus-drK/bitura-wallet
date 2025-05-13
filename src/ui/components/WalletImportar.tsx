@@ -1,6 +1,7 @@
 import { ArrowRight, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { validarMnemonic } from "../../services/walletService";
+import { walletShouldBeConfigured } from "../../hooks/walletShouldBeConfigured";
 
 interface WalletImportarProps {
     onBack: () => void;
@@ -13,6 +14,8 @@ function WalletImportar({ onBack, onNext, setMnemonicImportado }: WalletImportar
     const [inputs, setInputs] = useState<string[]>(Array(12).fill(""))
     const [sinRellenar, setSinRellenar] = useState<boolean>(false);
     const [invalidMnemonic, setInvalidMnemonic] = useState<boolean>(false);
+
+    walletShouldBeConfigured(false);
 
     const handleNumPalabras = (event: React.ChangeEvent<HTMLInputElement>) => {
         setNumPalabras(event.target.value);

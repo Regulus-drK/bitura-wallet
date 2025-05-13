@@ -1,13 +1,18 @@
 import { Import, SquarePlus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import logoBitura from '../../assets/LogotipoBituraPng.png'
 import { useWindowSize } from '../../hooks/useWindowSize';
 import { useWalletConfig } from '../../hooks/useWalletConfig';
-import WalletImportar from '../components/WalletImportar';
-import WalletCrear from '../components/WalletCrear';
-import WalletCrearVerificacion from '../components/WalletCrearVerificacion';
-import WalletCrearPassword from '../components/WalletCrearPassword';
- 
+import React, { Suspense } from 'react';
+import Spinner from '../components/Spinner';
+import { disableMenu } from '../../services/apiService';
+import { walletShouldBeConfigured } from '../../hooks/walletShouldBeConfigured';
+
+const WalletImportar = React.lazy(() => import('../components/WalletImportar'));
+const WalletCrear = React.lazy(() => import('../components/WalletCrear'));
+const WalletCrearVerificacion = React.lazy(() => import('../components/WalletCrearVerificacion'));
+const WalletCrearPassword = React.lazy(() => import('../components/WalletCrearPassword'));
+
 function WalletSetup() {
     const [mnemonic, setMnemonic] = useState<string[] | null>(null);
     const [mnemonicImportado, setMnemonicImportado] = useState<string[] | null>(null);
@@ -15,7 +20,13 @@ function WalletSetup() {
     'opciones' | 'importar' | 'crear' | 'verificacion' | 'password'
     >('opciones');
     const [origenPassword, setOrigenPassword] = useState<'importar' | 'verificacion' | null>(null);
+
     const isConfigured = useWalletConfig();
+    walletShouldBeConfigured(false);
+
+    useEffect(() => {
+        disableMenu();
+    }, []);
 
     useWindowSize({
         width: 800,
@@ -78,46 +89,54 @@ function WalletSetup() {
         )}
 
         {mode === 'importar' && (
-            <WalletImportar 
-                onBack={() => setMode('opciones')}
-                onNext={() => {
-                    setOrigenPassword('importar');
-                    setMode('password')
-                }}
-                setMnemonicImportado={setMnemonicImportado}
-            />
+            <Suspense fallback={<Spinner/>}>
+                <WalletImportar 
+                    onBack={() => setMode('opciones')}
+                    onNext={() => {
+                        setOrigenPassword('importar');
+                        setMode('password')
+                    }}
+                    setMnemonicImportado={setMnemonicImportado}
+                />
+            </Suspense>
         )}
         {mode === 'crear' && (
-            <WalletCrear 
-                onBack={() => setMode('opciones')}
-                onNext={() => setMode('verificacion')}
-                mnemonic={mnemonic}
-                setMnemonic={setMnemonic}
-            />
+            <Suspense fallback={<Spinner/>}>
+                <WalletCrear 
+                    onBack={() => setMode('opciones')}
+                    onNext={() => setMode('verificacion')}
+                    mnemonic={mnemonic}
+                    setMnemonic={setMnemonic}
+                />
+            </Suspense>
         )}
 
         {mode === 'verificacion' && (
-            <WalletCrearVerificacion 
-                onBack={() => setMode('crear')}
-                onNext={() => {
-                    setOrigenPassword('verificacion');
-                    setMode('password');
-                }}
-                mnemonic={mnemonic}
-            />
+            <Suspense fallback={<Spinner/>}>
+                <WalletCrearVerificacion 
+                    onBack={() => setMode('crear')}
+                    onNext={() => {
+                        setOrigenPassword('verificacion');
+                        setMode('password');
+                    }}
+                    mnemonic={mnemonic}
+                />
+            </Suspense>
         )}
 
         {mode === 'password' && (
-            <WalletCrearPassword
-                onBack={() => {
-                    if (origenPassword === 'importar') {
-                        setMode('importar');
-                    } else {
-                        setMode('verificacion');
-                    }
-                }}               
-                mnemonic={origenPassword === 'importar' ? mnemonicImportado : mnemonic}
-            />
+            <Suspense fallback={<Spinner/>}>
+                <WalletCrearPassword
+                    onBack={() => {
+                        if (origenPassword === 'importar') {
+                            setMode('importar');
+                        } else {
+                            setMode('verificacion');
+                        }
+                    }}               
+                    mnemonic={origenPassword === 'importar' ? mnemonicImportado : mnemonic}
+                />
+            </Suspense>
         )}
     </div>
     );

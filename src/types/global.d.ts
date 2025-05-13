@@ -12,9 +12,12 @@ declare global {
         resizable?: boolean
       }) => Promise<void>;
       resetWindowSize: () => Promise<void>;
+      enableMenu: () => void;
+      disableMenu: () => void;
       isWalletConfigured: () => Promise<boolean>;
       setWalletConfigured: (value: boolean) => Promise<void>;
       onWalletConfigChange: (callback: (value: boolean) => void) => () => void;
+      walletCheckAndNotify: (currentValue: boolean) => void;
       generateMnemonic: (numWords: '12' | '24') => Promise<string[]>;
       savePassword: (password: string) => Promise<void>;
       getPassword: () => Promise<string>;
