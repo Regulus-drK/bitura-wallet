@@ -3,11 +3,11 @@ import './styles/App.css'
 import { useWalletConfig } from '../hooks/useWalletConfig';
 import React, { Suspense } from 'react';
 import Spinner from './components/Spinner';
-import PasswordPrompt from './components/PasswordPrompt';
 
 const WalletSetup = React.lazy(() => import('./pages/WalletSetup'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Inicio = React.lazy(() => import('./pages/Inicio'));
+const PasswordPrompt = React.lazy(() => import('./components/PasswordPrompt'));
 
 function App() {
   const isConfigured = useWalletConfig();

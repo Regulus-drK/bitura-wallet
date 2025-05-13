@@ -84,9 +84,11 @@ export function createPasswordPromptWindow(): void {
     if (isDev()) {
         promptWindow.loadURL('http://localhost:5123/#/password-prompt'); // desarrollo
     } else {
-        promptWindow.loadFile(`${path.join(app.getAppPath(), 'dist-react/index.html#/password-prompt')}`); // producción
-    }
-};
+        // En producción, carga la URL de la aplicación React con hash
+        const url = `file://${path.join(app.getAppPath(), 'dist-react', 'index.html')}#/password-prompt`;
+        promptWindow.loadURL(url); // Producción con hash
+    };
+}
 
 export function ventanaConfirmarDeleteConfigFiles(): void {
     const response = dialog.showMessageBoxSync({

@@ -16,6 +16,7 @@ export default defineConfig({
   build: {
     outDir: 'dist-react',
     target: 'esnext',
+    // minify: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -28,18 +29,12 @@ export default defineConfig({
           if (id.includes('ethers')) {
             return 'eths';
           }
-          if (id.includes('bip39')) {
-            return 'b39';
-          }
           if (id.includes('react-router-dom')) {
             return 'rct-dom';
           }
-          if (id.includes('electron-store')) {
-            return 'e-store';
-          }
-          if (id.includes('node_modules')) {
-            return 'vendor';
-          }
+          // if (id.includes('node_modules')) {
+          //   return 'vendor';
+          // }
         }
       }
     }
@@ -47,5 +42,5 @@ export default defineConfig({
   server: {
     port: 5123,
     strictPort: true,
-  },
+  }
 })

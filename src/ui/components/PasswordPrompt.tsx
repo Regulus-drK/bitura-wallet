@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { closeActualWindow, deleteConfigFiles, validatePassword } from '../../services/apiService';
+import { deleteConfigFiles, validatePassword } from '../../services/apiService';
 import { Eye, EyeOff, Trash } from 'lucide-react';
 
 export default function PasswordPrompt() {
@@ -12,7 +12,6 @@ export default function PasswordPrompt() {
             setIsValidPassword(true);
 
             setTimeout(() => {
-                closeActualWindow();
                 deleteConfigFiles(password);
             }, 1350);
         } else {
