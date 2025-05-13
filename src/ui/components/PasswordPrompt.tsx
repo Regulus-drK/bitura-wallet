@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { deleteConfigFiles, validatePassword } from '../../services/apiService';
+import { closeActualWindow, deleteConfigFiles, validatePassword } from '../../services/apiService';
 import { Eye, EyeOff, Trash } from 'lucide-react';
 
 export default function PasswordPrompt() {
@@ -51,7 +51,7 @@ export default function PasswordPrompt() {
                     {showPassword ? <EyeOff/> : <Eye/>}
                 </button>
             </div>
-            <div className="mt-5 flex gap-6">
+            <div className="mt-5 flex flex-col gap-3.5">
                 {/* Botón Entrar */}
                 <button
                     onClick={handleConfirm}
@@ -64,6 +64,14 @@ export default function PasswordPrompt() {
                 >
                     <Trash className="w-5 h-5"/>
                     Reiniciar Configuración
+                </button>
+                <button
+                    onClick={closeActualWindow}
+                    disabled={isValidPassword}
+                    className="py-2 w-30 mt-0 self-center rounded-xl shadow-md border items-center transition duration-300
+                            border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"
+                >
+                    Cancelar
                 </button>
             </div>
             {/* Info. estado contraseñas introducidas */}

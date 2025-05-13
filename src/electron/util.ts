@@ -66,7 +66,7 @@ export function getMnemonic(): string | null {
 export function createPasswordPromptWindow(): void {
     const promptWindow = new BrowserWindow({
         width: 400,
-        height: 350,
+        height: 375,
         resizable: false,
         modal: true,
         autoHideMenuBar: true,

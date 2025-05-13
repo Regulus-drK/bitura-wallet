@@ -1,5 +1,5 @@
 import { BrowserWindow, Menu } from 'electron';
-import { createPasswordPromptWindow, ventanaConfirmarDeleteConfigFiles } from './util.js';
+import { ventanaConfirmarDeleteConfigFiles } from './util.js';
 
 // Definimos el template para el menú
 const menuTemplate: Electron.MenuItemConstructorOptions[] = [
@@ -22,6 +22,15 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
                         win.webContents.toggleDevTools(); // Abre/cierra DevTools
                     }
                 }
+            }
+        ],
+    },
+    {
+        label: 'Test',
+        submenu: [
+            {
+                label: 'Random',
+                click: () => null
             }
         ]
     }
