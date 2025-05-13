@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage } from 'electron';
 import Store from 'electron-store';
 import path from 'path';
-import { isDev, getJdkPath, getJarPath, savePassword, getPassword, saveMnemonic, getMnemonic } from './util.js';
+import { isDev, getJdkPath, getJarPath, savePassword, getPassword, saveMnemonic, getMnemonic, deleteConfigFiles } from './util.js';
 import { spawn } from 'child_process';
 import { MenuBar } from './MenuBar.js';
 
@@ -21,7 +21,7 @@ function createMainWindow(): BrowserWindow {
         height: 600,
         minWidth: 600,
         minHeight: 450,
-        // autoHideMenuBar: true,
+        autoHideMenuBar: true,
         webPreferences: {
             contextIsolation: true,
             preload: isDev()
@@ -69,6 +69,13 @@ app.on("ready", () => {
         app.quit();
     });
 
+    ipcMain.on('app/closeActualWindow', () => {
+        const win = BrowserWindow.getFocusedWindow();
+        if (!win) return;
+
+        win.close();
+    })
+
     ipcMain.handle('window:setSize', (_, options) => {
         const win = BrowserWindow.getFocusedWindow();
         if (!win) return;
@@ -95,6 +102,7 @@ app.on("ready", () => {
         // Establecer el menú de la aplicación
         const menu = MenuBar.buildMenu(); // Usamos el método buildMenu para construir el menú
         Menu.setApplicationMenu(menu); // Asigna el menú a la aplicación
+        win.autoHideMenuBar = false;
         win.setMenuBarVisibility(true);
     })
 
@@ -103,6 +111,7 @@ app.on("ready", () => {
         if (!win) return;
 
         Menu.setApplicationMenu(null); // Elimina el menú global
+        win.autoHideMenuBar = true;
         win.setMenuBarVisibility(false);
     })
 
@@ -227,6 +236,11 @@ app.on("ready", () => {
         const savedPassword = getPassword();
         return savedPassword === inputPassword;
     });
+
+    ipcMain.handle('wallet:deleteConfigFiles', async () => {
+        deleteConfigFiles();
+        return true;
+    })
 });
 
 // Cierra completamente la aplicación excepto en macOS

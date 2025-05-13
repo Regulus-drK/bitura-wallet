@@ -1,3 +1,10 @@
+export function closeApp() {
+  window.api.closeApp();
+}
+
+export function closeActualWindow() {
+  window.api.closeActualWindow();
+}
 
 export function enableMenu(): void {
   window.api.enableMenu();
@@ -66,3 +73,6 @@ export async function validatePassword(inputPassword: string): Promise<boolean> 
   return true;
 }
 
+export async function deleteConfigFiles(inputPassword: string): Promise<boolean> {
+  return window.api.deleteConfigFiles(inputPassword);
+}

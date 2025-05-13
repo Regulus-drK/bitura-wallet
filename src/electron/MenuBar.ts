@@ -1,15 +1,26 @@
-import { Menu } from 'electron';
+import { BrowserWindow, Menu } from 'electron';
+import { createPasswordPromptWindow, ventanaConfirmarDeleteConfigFiles } from './util.js';
 
 // Definimos el template para el menú
 const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     {
-        label: 'Prueba',
+        label: 'Archivo',
         submenu: [
             {
                 id: 'test',
-                label: 'Prueba',
+                label: 'Restaurar frase semilla',
                 click: () => {
-                    console.log('Test');
+                    ventanaConfirmarDeleteConfigFiles();
+                }
+            },
+            {
+                label: 'Consola de desarrollador',
+                accelerator: 'Ctrl+Shift+I', // Atajo de teclado
+                click: () => {
+                    const win = BrowserWindow.getFocusedWindow();
+                    if (win) {
+                        win.webContents.toggleDevTools(); // Abre/cierra DevTools
+                    }
                 }
             }
         ]

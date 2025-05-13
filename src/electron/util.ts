@@ -1,6 +1,7 @@
 import path from "path";
 import os from "os";
-import { app, safeStorage } from "electron";
+import { app, BrowserWindow, dialog, safeStorage } from "electron";
+import Store from 'electron-store';
 import fs from 'fs';
 
 const PASSWORD_FILE = path.join(app.getPath('userData'), 'pass.bin');
@@ -60,4 +61,60 @@ export function getMnemonic(): string | null {
 
     const encrypted = fs.readFileSync(MNEMONIC_FILE);
     return safeStorage.decryptString(encrypted);
+}
+
+export function createPasswordPromptWindow(): void {
+    const promptWindow = new BrowserWindow({
+        width: 400,
+        height: 350,
+        resizable: false,
+        modal: true,
+        autoHideMenuBar: true,
+        parent: BrowserWindow.getFocusedWindow() ?? undefined,
+        webPreferences: {
+            preload: isDev()
+                ? path.join(process.cwd(), 'dist-electron', 'preload.js')
+                : path.join(app.getAppPath(), 'dist-electron', 'preload.js'),
+            contextIsolation: true
+        }
+    });
+
+    promptWindow.setMenu(null);
+
+    if (isDev()) {
+        promptWindow.loadURL('http://localhost:5123/#/password-prompt'); // desarrollo
+    } else {
+        promptWindow.loadFile(`${path.join(app.getAppPath(), 'dist-react/index.html#/password-prompt')}`); // producción
+    }
+};
+
+export function ventanaConfirmarDeleteConfigFiles(): void {
+    const response = dialog.showMessageBoxSync({
+        type: 'question',
+        buttons: ['Cancelar', 'Aceptar'],
+        defaultId: 1,
+        title: 'Confirmar restauración de frase semilla',
+        message: 'Se borrarán todos los datos de su frase semilla y contraseña almacenada. \nRecuerde que no perderá sus activos si conserva su frase semilla. \n\nSe le pedirá su contraseña para esta acción. ¿Desea continuar?'
+    });
+
+    if (response === 1) {
+        createPasswordPromptWindow();
+    } else {
+        return;
+    }
+}
+
+export async function deleteConfigFiles(): Promise<void> {
+    let store = new Store();
+    try {
+        await fs.promises.unlink(store.path);
+        await fs.promises.unlink(PASSWORD_FILE);
+        await fs.promises.unlink(MNEMONIC_FILE);
+        console.log("Archivos eliminados correctamente");
+        // Reiniciar aplicación
+        app.relaunch();
+        app.quit();
+    } catch (err) {
+        console.error("Error al borrar los archivos:", err);
+    }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { disableMenu, validatePassword } from "../../services/apiService";
+import { closeApp, disableMenu, validatePassword } from "../../services/apiService";
 import logoBitura from '../../assets/LogotipoBituraPng.png'
 import { useWindowSize } from "../../hooks/useWindowSize";
 import { Eye, EyeOff, LogIn, LogOut } from "lucide-react";
@@ -31,7 +31,7 @@ function Login() {
     }
 
     const handleCloseApp = () => {
-        window.api.closeApp();
+        closeApp();
     }
 
     useWindowSize({

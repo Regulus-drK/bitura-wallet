@@ -2,6 +2,7 @@ declare global {
   interface Window {
     api: {
       closeApp: () => void;
+      closeActualWindow: () => void;
       setWindowSize: (options: {
         width: number,
         height: number,
@@ -24,6 +25,7 @@ declare global {
       saveMnemonic: (mnemonic: string) => Promise<void>;
       getMnemonic: () => Promise<string>;
       validatePassword: (inputPassword: string) => Promise<boolean>;
+      deleteConfigFiles: (inputPassword: string) => Promise<boolean>;
     };
   }
 }

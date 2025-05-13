@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
 contextBridge.exposeInMainWorld('api', {
     closeApp: () => ipcRenderer.send('app/close'),
+    closeActualWindow: () => ipcRenderer.send('app/closeActualWindow'),
     setWindowSize: (options: { 
         width: number, 
         height: number,
@@ -35,4 +36,19 @@ contextBridge.exposeInMainWorld('api', {
     saveMnemonic: (mnemonic: string) => ipcRenderer.invoke('wallet:saveMnemonic', mnemonic),
     getMnemonic: () => ipcRenderer.invoke('wallet:getMnemonic'),
     validatePassword: (inputPassword: string) => ipcRenderer.invoke('wallet:validatePassword', inputPassword),
+    deleteConfigFiles: (inputPassword: string) => {
+        // Primero validamos la contraseña
+        ipcRenderer.invoke('wallet:validatePassword', inputPassword)
+            .then(isValid => {
+                if (isValid) {
+                    // Si la contraseña es válida, procedemos a eliminar los archivos
+                    ipcRenderer.invoke('wallet:deleteConfigFiles');
+                } else {
+                    console.error('Contraseña inválida');
+                }
+            })
+            .catch(error => {
+                console.error('Error al validar la contraseña', error);
+            });
+    }
 });
