@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { enableMenu, getMnemonic } from '../../services/apiService';
 import { createWallets } from '../../services/walletService';
 import { walletShouldBeConfigured } from '../../hooks/walletShouldBeConfigured';
+import { useWindowSize } from '../../hooks/useWindowSize';
 
 function Inicio() {
   const [bitcoinAddress, setBitcoinAddress] = useState<string | null>(null);
@@ -34,6 +35,14 @@ function Inicio() {
 
     loadWallets();
   }, []);
+
+  useWindowSize({
+      width: 1200,
+      height: 850,
+      minWidth: 750,
+      minHeight: 550,
+      resizable: true
+  });
   
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-2">
