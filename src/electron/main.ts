@@ -228,7 +228,7 @@ app.on("ready", () => {
         return true;
     });
 
-    ipcMain.handle('wallet:getMnemonic', () => {
+    ipcMain.handle('wallet:getMnemonic', async () => {
         return getMnemonic();
     });
 

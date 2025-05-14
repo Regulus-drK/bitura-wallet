@@ -6,8 +6,10 @@ import { enableMenu, getMnemonic } from '../../services/apiService';
 import { createWallets } from '../../services/walletService';
 import { walletShouldBeConfigured } from '../../hooks/walletShouldBeConfigured';
 import { useWindowSize } from '../../hooks/useWindowSize';
+import { useAuth } from '../../context/AuthContext';
 
 function Inicio() {
+  const { password } = useAuth(); // Password global guardada en context
   const [bitcoinAddress, setBitcoinAddress] = useState<string | null>(null);
   const [ethereumAddress, setEthereumAddress] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -19,11 +21,14 @@ function Inicio() {
   };
 
   useEffect(() => {
+    if (!password) return;
+
     enableMenu();
     const loadWallets = async () => {
       try {
-        const mnemonic = await getMnemonic();
-        const wallets = createWallets(mnemonic, 1, true);
+        const mnemonic = await getMnemonic(password);
+        console.log(mnemonic);
+        const wallets = createWallets(mnemonic, 0, true);
         if (wallets) {
           setBitcoinAddress(wallets.bitcoin.address);
           setEthereumAddress(wallets.ethereum.address);
@@ -34,7 +39,7 @@ function Inicio() {
     };
 
     loadWallets();
-  }, []);
+  }, [password]);
 
   useWindowSize({
       width: 1200,

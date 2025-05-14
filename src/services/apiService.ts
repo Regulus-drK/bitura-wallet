@@ -54,13 +54,13 @@ export async function saveMnemonic(mnemonic: string): Promise<void> {
   return window.api.saveMnemonic(mnemonic);
 }
 
-export async function getMnemonic(): Promise<string | null> {
-  const mnemonic = await window.api.getMnemonic();
+export async function getMnemonic(inputPassword: string): Promise<string | null> {
+  const mnemonic = await window.api.getMnemonic(inputPassword);
   if (mnemonic) {
     return mnemonic;
   } else {
     console.log('No hay mnemonic guardado');
-    return '';
+    return null;
   }
 }
 

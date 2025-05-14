@@ -3,6 +3,7 @@ import './styles/App.css'
 import { useWalletConfig } from '../hooks/useWalletConfig';
 import React, { Suspense } from 'react';
 import Spinner from './components/Spinner';
+import { AuthProvider } from '../context/AuthContext';
 
 const WalletSetup = React.lazy(() => import('./pages/WalletSetup'));
 const Login = React.lazy(() => import('./pages/Login'));
@@ -15,11 +16,13 @@ function App() {
   return (
     <Router>
       <Suspense fallback={<Spinner/>}>
-        <Routes>
-          <Route path="/" element={isConfigured ? <Login /> : <WalletSetup />} />
-          <Route path='/inicio' element={<Inicio/>}/>
-          <Route path='/password-prompt' element={<PasswordPrompt/>}/>
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={isConfigured ? <Login /> : <WalletSetup />} />
+            <Route path='/inicio' element={<Inicio/>}/>
+            <Route path='/password-prompt' element={<PasswordPrompt/>}/>
+          </Routes>
+        </AuthProvider>
       </Suspense>
     </Router>
   );

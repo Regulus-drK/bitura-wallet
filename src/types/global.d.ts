@@ -23,7 +23,7 @@ declare global {
       savePassword: (password: string) => Promise<void>;
       getPassword: () => Promise<string>;
       saveMnemonic: (mnemonic: string) => Promise<void>;
-      getMnemonic: () => Promise<string>;
+      getMnemonic: (inputPassword: string) => Promise<string>;
       validatePassword: (inputPassword: string) => Promise<boolean>;
       deleteConfigFiles: (inputPassword: string) => Promise<boolean>;
     };

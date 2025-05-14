@@ -1,3 +1,4 @@
+import { error } from 'console';
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
 contextBridge.exposeInMainWorld('api', {
@@ -34,7 +35,25 @@ contextBridge.exposeInMainWorld('api', {
     savePassword: (password: string) => ipcRenderer.invoke('wallet:savePassword', password),
     // getPassword: () => ipcRenderer.invoke('wallet:getPassword'), // Desactivados para el front (de momento, al menos)
     saveMnemonic: (mnemonic: string) => ipcRenderer.invoke('wallet:saveMnemonic', mnemonic),
-    getMnemonic: () => ipcRenderer.invoke('wallet:getMnemonic'),
+    getMnemonic: async (inputPassword: string): Promise<string | null> => {
+        if (!inputPassword) {
+            console.error('Error: La contraseña ha llegado como null');
+            return null;
+        }
+        try {
+            const isValid = await ipcRenderer.invoke('wallet:validatePassword', inputPassword);
+            if (isValid) {
+                const mnemonic = await ipcRenderer.invoke('wallet:getMnemonic');
+                return mnemonic;
+            } else {
+                console.error('Contraseña inválida, no se puede acceder al mnemonic.');
+                return null;
+            }
+        } catch (error) {
+            console.error('Error al obtener el mnemonic:', error);
+            return null;
+        }
+    },
     validatePassword: (inputPassword: string) => ipcRenderer.invoke('wallet:validatePassword', inputPassword),
     deleteConfigFiles: (inputPassword: string) => {
         // Primero validamos la contraseña

@@ -5,10 +5,11 @@ import { useWindowSize } from "../../hooks/useWindowSize";
 import { Eye, EyeOff, LogIn, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { walletShouldBeConfigured } from "../../hooks/walletShouldBeConfigured";
+import { useAuth } from "../../context/AuthContext";
 
 function Login() {
+    const { password, setPassword, clearPassword } = useAuth();
     const [loginSuccessful, setLoginSuccessful] = useState<boolean | undefined>(undefined);
-    const [password, setPassword] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
 
     const navigate = useNavigate();
@@ -16,8 +17,9 @@ function Login() {
     walletShouldBeConfigured(true);
 
     useEffect(() => {
+        clearPassword();
         disableMenu();
-    });
+    }, []);
 
     const handleVerifyLogin = async () => {
         if (await validatePassword(password!)) {

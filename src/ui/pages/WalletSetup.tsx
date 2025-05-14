@@ -7,6 +7,7 @@ import React, { Suspense } from 'react';
 import Spinner from '../components/Spinner';
 import { disableMenu } from '../../services/apiService';
 import { walletShouldBeConfigured } from '../../hooks/walletShouldBeConfigured';
+import { useAuth } from '../../context/AuthContext';
 
 const WalletImportar = React.lazy(() => import('../components/WalletImportar'));
 const WalletCrear = React.lazy(() => import('../components/WalletCrear'));
@@ -14,6 +15,7 @@ const WalletCrearVerificacion = React.lazy(() => import('../components/WalletCre
 const WalletCrearPassword = React.lazy(() => import('../components/WalletCrearPassword'));
 
 function WalletSetup() {
+    const { clearPassword } = useAuth();
     const [mnemonic, setMnemonic] = useState<string[] | null>(null);
     const [mnemonicImportado, setMnemonicImportado] = useState<string[] | null>(null);
     const [mode, setMode] = useState<
@@ -26,6 +28,7 @@ function WalletSetup() {
 
     useEffect(() => {
         disableMenu();
+        clearPassword();
     }, []);
 
     useWindowSize({
