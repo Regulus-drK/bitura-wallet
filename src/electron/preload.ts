@@ -31,7 +31,11 @@ contextBridge.exposeInMainWorld('api', {
             ipcRenderer.off('wallet:configChanged', listener);
         };
     },
-    generateMnemonic: (args: string) => ipcRenderer.invoke('java:generateMnemonic', args),
+    // Llamadas API Java
+    generateMnemonic: async (args: string) => ipcRenderer.invoke('java:generateMnemonic', args),
+    listarPrecios: async () => ipcRenderer.invoke('java:listarPrecios'),
+      consultarDireccion: (direccion: string, pagina: string) => ipcRenderer.invoke('java:consultarDireccion', direccion, pagina),
+    // Fin Llamadas API Java
     savePassword: (password: string) => ipcRenderer.invoke('wallet:savePassword', password),
     // getPassword: () => ipcRenderer.invoke('wallet:getPassword'), // Desactivados para el front (de momento, al menos)
     saveMnemonic: (mnemonic: string) => ipcRenderer.invoke('wallet:saveMnemonic', mnemonic),

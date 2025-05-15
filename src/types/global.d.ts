@@ -1,3 +1,7 @@
+import type { BtcResponse } from "./BtcBalance";
+import type { CryptoAPIResponse } from "./CryptoPrices";
+import type { EthResponse } from "./EthBalance";
+
 declare global {
   interface Window {
     api: {
@@ -20,6 +24,8 @@ declare global {
       onWalletConfigChange: (callback: (value: boolean) => void) => () => void;
       walletCheckAndNotify: (currentValue: boolean) => void;
       generateMnemonic: (numWords: '12' | '24') => Promise<string[]>;
+      listarPrecios: () => Promise<CryptoAPIResponse>;
+      consultarDireccion: (direccion: string, pagina: string) => Promise<BtcResponse | EthResponse>;
       savePassword: (password: string) => Promise<void>;
       getPassword: () => Promise<string>;
       saveMnemonic: (mnemonic: string) => Promise<void>;

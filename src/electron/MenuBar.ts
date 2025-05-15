@@ -52,7 +52,17 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
                         win.webContents.toggleDevTools();
                     }
                 }
-            }
+            },
+            {
+                label: 'Recargar (dev)',
+                accelerator: 'Ctrl+R',
+                click: () => {
+                    const win = BrowserWindow.getFocusedWindow();
+                    if (win) {
+                        win.reload();
+                    }
+                }
+            },
         ],
     },
     {

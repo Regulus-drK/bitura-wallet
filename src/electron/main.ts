@@ -167,7 +167,7 @@ app.on("ready", () => {
             });
 
             proc.stderr.on('data', (data) => {
-                reject(`[JAVA ERROR - INVOKE]: ${data}`);
+                reject(`[JAVA ERROR - generateMnemonic]: ${data}`);
             });
 
             proc.on('close', (code) => {
@@ -177,6 +177,70 @@ app.on("ready", () => {
                         resolve(wordsArray);
                     } catch (error) {
                         reject("Error al parsear la salida de Java.");
+                    }
+                } else {
+                    reject(`El proceso Java terminó con código ${code}`);
+                }
+            });
+        });
+    });
+
+    ipcMain.handle('java:listarPrecios', async () => {
+        return new Promise((resolve, reject) => {
+            const javaPath = getJdkPath();
+            const jarPath = getJarPath();
+
+            const proc = spawn(javaPath, ['-jar', jarPath, 'llamarAPI', 'listarPrecios']);
+            let output = '';
+
+            proc.stdout.on('data', (data) => {
+                output += data.toString();
+            });
+
+            proc.stderr.on('data', (data) => {
+                console.error('stderr:', data.toString());
+                reject(`[JAVA ERROR - listarPrecios]: ${data}`);
+            });
+
+            proc.on('close', (code) => {
+                if (code === 0) {
+                    try {
+                        const parsed = JSON.parse(output.trim());
+                        resolve(parsed);
+                    } catch (err) {
+                        reject(`Error al parsear JSON: ${err}`);
+                    }
+                } else {
+                    reject(`El proceso Java terminó con código ${code}`);
+                }
+            });
+        });
+    });
+
+    ipcMain.handle('java:consultarDireccion', async (_event, direccion: string, pagina: string) => {
+        return new Promise((resolve, reject) => {
+            const javaPath = getJdkPath();
+            const jarPath = getJarPath();
+
+            const proc = spawn(javaPath, ['-jar', jarPath, 'llamarAPI', 'consultarDireccion', direccion, pagina]);
+            let output = '';
+
+            proc.stdout.on('data', (data) => {
+                output += data.toString();
+            });
+
+            proc.stderr.on('data', (data) => {
+                console.error('stderr:', data.toString());
+                reject(`[JAVA ERROR - consultarDireccion]: ${data}`);
+            });
+
+            proc.on('close', (code) => {
+                if (code === 0) {
+                    try {
+                        const parsed = JSON.parse(output.trim());
+                        resolve(parsed);
+                    } catch (err) {
+                        reject(`Error al parsear JSON: ${err}`);
                     }
                 } else {
                     reject(`El proceso Java terminó con código ${code}`);

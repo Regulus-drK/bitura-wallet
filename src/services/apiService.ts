@@ -1,3 +1,7 @@
+import type { BtcResponse } from "../types/BtcBalance";
+import type { CryptoAPIResponse } from "../types/CryptoPrices";
+import type { EthResponse } from "../types/EthBalance";
+
 export function closeApp() {
   window.api.closeApp();
 }
@@ -15,13 +19,33 @@ export function disableMenu(): void {
 }
 
 export async function generateMnemonic(numWords: '12' | '24'): Promise<string[]> {
-    try {
-        const result = await window.api.generateMnemonic(numWords);
-        return result;
-    } catch (err) {
-        console.error("Error generando mnemonic: ", err);
-        return [];
-    }
+  try {
+      const result = await window.api.generateMnemonic(numWords);
+      return result;
+  } catch (err) {
+      console.error("Error generando mnemonic: ", err);
+      return [];
+  }
+}
+
+export async function listarPrecios(): Promise<CryptoAPIResponse | null> {
+  try {
+    const result = await window.api.listarPrecios();
+    return result;
+  } catch (err) {
+    console.error("Error cargando precios: ", err);
+    return null;
+  }
+}
+
+export async function consultarDireccion(direccion: string, pagina: string): Promise<EthResponse | BtcResponse | null> {
+  try {
+    const result = await window.api.consultarDireccion(direccion, pagina);
+    return result;
+  } catch (err) {
+    console.error("Error consultando dirección: ", err);
+    return null;
+  }
 }
 
 export async function isWalletConfigured(): Promise<boolean> {
