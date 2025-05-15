@@ -12,14 +12,14 @@ interface WalletImportarProps {
 function WalletImportar({ onBack, onNext, setMnemonicImportado }: WalletImportarProps) {
     const [numPalabras, setNumPalabras] = useState('12');
     const [inputs, setInputs] = useState<string[]>(Array(12).fill(""))
-    const [sinRellenar, setSinRellenar] = useState<boolean>(false);
+    const [sinRellenar, setSinRellenar] = useState<boolean>(true);
     const [invalidMnemonic, setInvalidMnemonic] = useState<boolean>(false);
 
     walletShouldBeConfigured(false);
 
     const handleNumPalabras = (event: React.ChangeEvent<HTMLInputElement>) => {
         setNumPalabras(event.target.value);
-    }
+    };
 
     const handleChange = (index: number, value: string) => {
         const updatedInputs = [...inputs];
@@ -59,7 +59,7 @@ function WalletImportar({ onBack, onNext, setMnemonicImportado }: WalletImportar
     useEffect(() => {
         const n = parseInt(numPalabras);
         setInputs(Array(n).fill(""));
-        setSinRellenar(false);
+        setSinRellenar(true);
     }, [numPalabras]);
 
     return (

@@ -43,3 +43,12 @@ export const MenuBar = {
         return Menu.buildFromTemplate(menuTemplate); // Construye el menú a partir de la plantilla
     }
 };
+
+export const EmptyMenu = {
+    buildMenu() {    
+        const emptyMenu: Electron.MenuItemConstructorOptions[] = [];
+        return Menu.buildFromTemplate(emptyMenu);
+    }
+};
+
+

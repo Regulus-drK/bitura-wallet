@@ -3,7 +3,7 @@ import Store from 'electron-store';
 import path from 'path';
 import { isDev, getJdkPath, getJarPath, savePassword, getPassword, saveMnemonic, getMnemonic, deleteConfigFiles } from './util.js';
 import { spawn } from 'child_process';
-import { MenuBar } from './MenuBar.js';
+import { EmptyMenu, MenuBar } from './MenuBar.js';
 
 interface WalletStore {
   walletConfigured: boolean;
@@ -110,7 +110,8 @@ app.on("ready", () => {
         const win = BrowserWindow.getFocusedWindow();
         if (!win) return;
 
-        Menu.setApplicationMenu(null); // Elimina el menú global
+        const emptyMenu = EmptyMenu.buildMenu();
+        Menu.setApplicationMenu(emptyMenu); // Elimina el menú global
         win.autoHideMenuBar = true;
         win.setMenuBarVisibility(false);
     })
