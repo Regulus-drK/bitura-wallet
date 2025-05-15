@@ -1,7 +1,37 @@
-import { BrowserWindow, Menu } from 'electron';
+import { BrowserWindow, Menu, app } from 'electron';
 import { ventanaConfirmarDeleteConfigFiles } from './util.js';
 
-// Definimos el template para el menú
+//  Lógica común para personalizar el panel "Acerca de" en macOS
+if (process.platform === 'darwin') {
+  app.setAboutPanelOptions({
+    applicationName: 'Bitura Wallet',
+    applicationVersion: '0.1.0',
+    copyright: '© 2025 Jorge Puentes',
+    credits: 'Desarrollado por Jorge Puentes'
+  });
+}
+
+// Función reutilizable para añadir el menú de la app en macOS
+function getMacAppMenu(): Electron.MenuItemConstructorOptions | null {
+  if (process.platform !== 'darwin') return null;
+
+  return {
+    label: app.name,
+    submenu: [
+      { label: 'Acerca de Bitura Wallet', role: 'about' },
+      { type: 'separator' },
+      { label: 'Servicios', role: 'services' },
+      { type: 'separator' },
+      { label: 'Ocultar Bitura Wallet', role: 'hide' },
+      { label: 'Ocultar otros', role: 'hideOthers' },
+      { label: 'Mostrar todo', role: 'unhide' },
+      { type: 'separator' },
+      { label: 'Salir de Bitura Wallet', role: 'quit' }
+    ]
+  };
+}
+
+// Menú principal con todo
 const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     {
         label: 'Archivo',
@@ -15,11 +45,11 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
             },
             {
                 label: 'Consola de desarrollador',
-                accelerator: 'Ctrl+Shift+I', // Atajo de teclado
+                accelerator: 'Ctrl+Shift+I',
                 click: () => {
                     const win = BrowserWindow.getFocusedWindow();
                     if (win) {
-                        win.webContents.toggleDevTools(); // Abre/cierra DevTools
+                        win.webContents.toggleDevTools();
                     }
                 }
             }
@@ -36,19 +66,29 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     }
 ];
 
-// Exportamos la plantilla de menú y la función para construirlo
+// Si estamos en macOS, añadimos el menú de la app al principio
+const macMenu = getMacAppMenu();
+if (macMenu) {
+  menuTemplate.unshift(macMenu);
+}
+
 export const MenuBar = {
-    menuTemplate,
-    buildMenu() {
-        return Menu.buildFromTemplate(menuTemplate); // Construye el menú a partir de la plantilla
-    }
+  menuTemplate,
+  buildMenu() {
+    return Menu.buildFromTemplate(menuTemplate);
+  }
 };
 
+// Menú vacío (solo con "Acerca de..." si es macOS)
 export const EmptyMenu = {
-    buildMenu() {    
-        const emptyMenu: Electron.MenuItemConstructorOptions[] = [];
-        return Menu.buildFromTemplate(emptyMenu);
+  buildMenu() {
+    const emptyMenu: Electron.MenuItemConstructorOptions[] = [];
+
+    const macMenu = getMacAppMenu();
+    if (macMenu) {
+      emptyMenu.unshift(macMenu);
     }
+
+    return Menu.buildFromTemplate(emptyMenu);
+  }
 };
-
-
