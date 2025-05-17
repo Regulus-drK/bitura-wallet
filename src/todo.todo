@@ -1,0 +1,4 @@
+Creación de cuentas y derivación claves privadas/públicas:
+    ☐ Al crear una cuenta, se guardará el indice de la clave privada y se mostrará el saldo de esa cuenta.
+    ☐ Si se tienen varias cuentas, en el dashboard se mostrará el resumen total de saldo de todas juntas
+    

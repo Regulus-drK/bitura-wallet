@@ -1,6 +1,7 @@
 import type { BtcResponse } from "../types/BtcBalance";
 import type { CryptoAPIResponse } from "../types/CryptoPrices";
 import type { EthResponse } from "../types/EthBalance";
+import type { WalletInfo } from "../types/WalletInfo";
 
 export function closeApp() {
   window.api.closeApp();
@@ -95,6 +96,26 @@ export async function validatePassword(inputPassword: string): Promise<boolean> 
     return false;
   }
   return true;
+}
+
+export async function getAllWallets(): Promise<WalletInfo[]> {
+  return await window.api.getAllWallets();
+}
+
+export async function getWalletPorTipo(tipo: 'BTC' | 'ETH'): Promise<WalletInfo | null> {
+  return await window.api.getWalletPorTipo(tipo);
+}
+
+export async function addWallet(nuevaWallet: WalletInfo): Promise<boolean> {
+  return await window.api.addWallet(nuevaWallet);
+}
+
+export async function updateWallet(nombre: string, datosActualizados: Partial<WalletInfo>): Promise<void> {
+  await window.api.updateWallet(nombre, datosActualizados);
+}
+
+export async function deleteWallet(nombre: string): Promise<void> {
+  await window.api.deleteWallet(nombre);
 }
 
 export async function deleteConfigFiles(inputPassword: string): Promise<boolean> {

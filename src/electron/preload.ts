@@ -1,5 +1,12 @@
-import { error } from 'console';
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
+interface WalletInfo {
+    tipoMoneda: 'BTC' | 'ETH';
+    nombre: string;
+    pathBase?: string;
+    tipoDireccion?: 'legacy' | 'segwit' | 'native';
+    red: 'mainnet' | 'testnet';
+    indiceActual: number;
+}
 
 contextBridge.exposeInMainWorld('api', {
     closeApp: () => ipcRenderer.send('app/close'),
@@ -59,6 +66,11 @@ contextBridge.exposeInMainWorld('api', {
         }
     },
     validatePassword: (inputPassword: string) => ipcRenderer.invoke('wallet:validatePassword', inputPassword),
+    getAllWallets: () => ipcRenderer.invoke('wallet:getAllWallets'),
+    getWalletPorTipo: (tipo: 'BTC' | 'ETH') => ipcRenderer.invoke('wallet:getWalletPorTipo', tipo),
+    addWallet: (nuevaWallet: WalletInfo) => ipcRenderer.invoke('wallet:addWallet', nuevaWallet),
+    updateWallet: (nombre: string, datosActualizados: Partial<WalletInfo>) => ipcRenderer.invoke('wallet:updateWallet', nombre, datosActualizados),
+    deleteWallet: (nombre: string) => ipcRenderer.invoke('wallet:deleteWallet', nombre),
     deleteConfigFiles: (inputPassword: string) => {
         // Primero validamos la contraseña
         ipcRenderer.invoke('wallet:validatePassword', inputPassword)

@@ -1,6 +1,7 @@
 import type { BtcResponse } from "./BtcBalance";
 import type { CryptoAPIResponse } from "./CryptoPrices";
 import type { EthResponse } from "./EthBalance";
+import type { WalletInfo } from "./WalletInfo";
 
 declare global {
   interface Window {
@@ -31,6 +32,11 @@ declare global {
       saveMnemonic: (mnemonic: string) => Promise<void>;
       getMnemonic: (inputPassword: string) => Promise<string>;
       validatePassword: (inputPassword: string) => Promise<boolean>;
+      getAllWallets: () => Promise<WalletInfo[]>;
+      getWalletPorTipo: (tipo: 'BTC' | 'ETH') => Promise<WalletInfo | null>;
+      addWallet: (nuevaWallet: WalletInfo) => Promise<boolean>;
+      updateWallet: (nombre: string, datosActualizados: Partial<WalletInfo>) => Promise<void>;
+      deleteWallet: (nombre: string) => Promise<void>;
       deleteConfigFiles: (inputPassword: string) => Promise<boolean>;
     };
   }

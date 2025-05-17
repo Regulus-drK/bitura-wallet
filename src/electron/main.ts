@@ -4,9 +4,17 @@ import path from 'path';
 import { isDev, getJdkPath, getJarPath, savePassword, getPassword, saveMnemonic, getMnemonic, deleteConfigFiles } from './util.js';
 import { spawn } from 'child_process';
 import { EmptyMenu, MenuBar } from './MenuBar.js';
-
+interface WalletInfo {
+    tipoMoneda: 'BTC' | 'ETH';
+    nombre: string;
+    pathBase?: string;
+    tipoDireccion?: 'legacy' | 'segwit' | 'native';
+    red: 'mainnet' | 'testnet';
+    indiceActual: number;
+}
 interface WalletStore {
   walletConfigured: boolean;
+  wallets?: WalletInfo[];
 };
 
 const store = new Store<WalletStore>({
@@ -302,10 +310,47 @@ app.on("ready", () => {
         return savedPassword === inputPassword;
     });
 
+    // Obtener todas las wallets
+    ipcMain.handle('wallet:getAllWallets', () => {
+        return store.get('wallets') || [];
+    });
+
+    // Obtener wallets por tipo de moneda (BTC o ETH)
+    ipcMain.handle('wallet:getWalletPorTipo', (_event, tipo: 'BTC' | 'ETH') => {
+        const todas = store.get('wallets') || [];
+        return todas.filter(w => w.tipoMoneda === tipo);
+    });
+
+    // Crear una wallet
+    ipcMain.handle('wallet:addWallet', (_event, nuevaWallet: WalletInfo) => {
+        const existentes: WalletInfo[] = store.get('wallets') || [];
+        existentes.push(nuevaWallet);
+        store.set('wallets', existentes);
+        return true;
+    });
+
+    // Actualizar una wallet por nombre
+    ipcMain.handle('wallet:updateWallet', (_event, nombre: string, datosActualizados: Partial<WalletInfo>) => {
+        const existentes = store.get('wallets') || [];
+        const actualizadas = existentes.map(wallet =>
+            wallet.nombre === nombre ? { ...wallet, ...datosActualizados } : wallet
+        );
+        store.set('wallets', actualizadas);
+        return true;
+    });
+
+    // Eliminar una wallet
+    ipcMain.handle('wallet:deleteWallet', (_event, nombre: string) => {
+        const existentes = store.get('wallets') || [];
+        const filtradas = existentes.filter(wallet => wallet.nombre !== nombre);
+        store.set('wallets', filtradas);
+        return true;
+    });
+
     ipcMain.handle('wallet:deleteConfigFiles', async () => {
         deleteConfigFiles();
         return true;
-    })
+    });
 });
 
 // Cierra completamente la aplicación excepto en macOS

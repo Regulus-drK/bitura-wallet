@@ -1,47 +1,66 @@
-import { useEffect } from 'react';
-import { useNavigate } from "react-router-dom";
-import { enableMenu} from '../../services/apiService';
+import { useEffect, useState } from 'react';
+import { Outlet } from "react-router-dom";
+import { enableMenu, getAllWallets, getMnemonic} from '../../services/apiService';
 import { walletShouldBeConfigured } from '../../hooks/walletShouldBeConfigured';
 import { useWindowSize } from '../../hooks/useWindowSize';
 import { useAuth } from '../../context/AuthContext';
 import SidebarMenu from '../components/SidebarMenu';
+import { crearWalletBtc, crearYGuardarWalletBtc } from '../../services/walletService';
+import { useWallets } from '../../context/WalletContext';
 
 function Inicio() {
   const { password } = useAuth(); // Password global guardada en context
+  const { wallets, setWallets } = useWallets();
 
-  // Nuevos estados para datos de direcciones
-  const navigate = useNavigate();
-  
+  const [bitcoinAddress, setBitcoinAddress] = useState<string | null>(null);
+
   walletShouldBeConfigured(true);
 
-  const logOut = () => {
-    navigate("/");
-  };
+  useEffect(() => {
+    enableMenu();
+  });
 
   useEffect(() => {
     if (!password) return;
 
-    enableMenu();
-  });
+    const loadWallet = async () => {
+      const mnemonic = await getMnemonic(password);
+      const wallet = crearWalletBtc(mnemonic, 0, 'native');
+
+      if (wallet) {
+        setBitcoinAddress(wallet.address);
+      }
+    };
+
+    loadWallet();
+  }, [password]);
 
   useWindowSize({
       width: 1200,
       height: 850,
-      minWidth: 750,
-      minHeight: 550,
+      minWidth: 850,
+      minHeight: 650,
       resizable: true
   });
+
+  const crearWalletHandler = async () => {
+    if (!password) return;
+
+    const mnemonic = await getMnemonic(password);
+    const resultado = await crearYGuardarWalletBtc('Prueba', mnemonic, 0, 'native');
+    if (resultado) {
+      // Refrescar lista de wallets
+      const todasWallets = await getAllWallets();
+      setWallets(todasWallets);
+    }
+  }
   
   return (
     <div className="flex min-h-screen bg-neutral-800 text-white">
       <SidebarMenu />
 
       <main className="ml-60 flex-1 p-6 text-center">
-
-        <h1 className="text-3xl font-bold mt-6 mb-1 text-neutral-100">
-          ¡Bienvenido a la aplicación de criptomonedas!
-        </h1>
-        <p className="text-neutral-300 mb-6">Ha iniciado sesión correctamente.</p>
+        <Outlet/>
       </main>
     </div>
   );

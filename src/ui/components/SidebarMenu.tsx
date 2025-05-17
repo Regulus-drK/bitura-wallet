@@ -32,9 +32,9 @@ const SidebarMenu = () => {
             <SidebarButton 
                 icon={<Wallet size={20} />} 
                 label="Cuentas" 
-                to="/cuentas" // Meramente informativo para saber a dónde redirige
-                active={location.pathname === "/cuentas"}
-                onClick={() => handleLocation("/cuentas")} 
+                to="/inicio/cuentas" // Meramente informativo para saber a dónde redirige
+                active={location.pathname === "/inicio/cuentas" || location.pathname === '/inicio/cuentas/agregar'}
+                onClick={() => handleLocation("/inicio/cuentas")} 
             />
         </nav>
 
@@ -42,9 +42,9 @@ const SidebarMenu = () => {
             <SidebarButton 
                 icon={<Settings size={20} />} 
                 label="Configuración" 
-                to="/config" // Meramente informativo para saber a dónde redirige
-                active={location.pathname === "/config"}
-                onClick={() => handleLocation("/config")}  
+                to="/inicio/config" // Meramente informativo para saber a dónde redirige
+                active={location.pathname === "/inicio/config"}
+                onClick={() => handleLocation("/inicio/config")}  
             />
             <SidebarButton 
                 icon={<LogOut size={20} />} 
