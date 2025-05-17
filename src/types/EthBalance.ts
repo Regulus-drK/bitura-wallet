@@ -41,6 +41,7 @@ export interface EthResponse {
 export interface ParsedEthTx extends EthTx {
   feeWei: BigNumber;  // gasUsed * gasPrice en Wei
   feeEth: BigNumber;  // fee convertido a ETH
+  valueEth: BigNumber;
 }
 
 export interface ParsedEthResponse {
@@ -63,10 +64,13 @@ export function parseEthResponse(response: EthResponse): ParsedEthResponse {
     const gasPrice = new BigNumber(tx.gasPrice);
     // Añadir el value calculado de la Tx
     const feeWei = gasUsed.multipliedBy(gasPrice);
+    // Value de Tx en Wei para convertir después
+    const valueWei = new BigNumber(tx.value);
     return {
       ...tx,
       feeWei,
       feeEth: feeWei.dividedBy(WEI_IN_ETH),
+      valueEth: valueWei.dividedBy(WEI_IN_ETH),  // Por último, conversión del "value" en Wei de la Tx a Ether
     };
   });
 

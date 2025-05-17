@@ -48,6 +48,7 @@ function WalletSetup() {
                 <img 
                     src={logoBitura} 
                     alt="Logo Bitura" 
+                    draggable="false"
                     className="w-115 h-40" // Ajusta el tamaño según necesites
                 />
             </div>
