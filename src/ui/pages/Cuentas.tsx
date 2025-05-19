@@ -8,7 +8,7 @@ import BigNumber from "bignumber.js";
 import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
 import { getMnemonic } from "../../services/apiService";
-import { verificarFondosDireccionesBtc } from "../../services/walletService";
+import { verificarFondosDireccionesBtc, verificarFondosDireccionesBtcTestnet } from "../../services/walletService";
 
 function Cuentas() {
     const { password } = useAuth();
@@ -23,7 +23,7 @@ function Cuentas() {
             const mnemonic = await getMnemonic(password);
             
             for (const wallet of wallets.filter(w => w.tipoMoneda === "BTC")) {
-                const fondosBtc = await verificarFondosDireccionesBtc(mnemonic, wallet);
+                const fondosBtc = await verificarFondosDireccionesBtcTestnet(mnemonic, wallet);
                 if (fondosBtc) {
                     setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosBtc.totalBtc }));
                 } else {

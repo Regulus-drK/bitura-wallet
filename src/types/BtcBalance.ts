@@ -49,6 +49,15 @@ export interface ParsedBtcTx extends BtcTx {
   feeBtc: BigNumber;  // fee en BTC
 }
 
+export interface BtcTestResponse {
+  txid: string;
+  status: {
+    confirmed: boolean;
+    block_time: number;
+  };
+  value: number;
+}
+
 export interface ParsedBtcResponse {
   address: string;
   confirmedSats: BigNumber;    // satoshis (BigNumber)

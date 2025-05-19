@@ -96,7 +96,7 @@ function CuentasAgregar() {
         }
 
         try {
-            let resultado = await crearYGuardarWalletBtc(nombreWallet, mnemonic, ultimoIndex, selectedTipo);
+            let resultado = await crearYGuardarWalletBtc(nombreWallet, mnemonic, ultimoIndex, selectedTipo, true);
             if (resultado) {
                 const allWallets = await getAllWallets();
                 setWallets(allWallets);

@@ -8,7 +8,7 @@ import BigNumber from "bignumber.js";
 import { Buffer } from 'buffer';
 import type { WalletInfo } from '../types/WalletInfo';
 import { addWallet, consultarDireccion, updateWallet } from './apiService';
-import { parseBtcResponse, type BtcResponse, type ParsedBtcResponse } from '../types/BtcBalance';
+import { parseBtcResponse, type BtcResponse, type BtcTestResponse, type ParsedBtcResponse } from '../types/BtcBalance';
 
 // Crear instancia de bip32 con tiny-secp256k1
 const bip32 = BIP32Factory(ecc);
@@ -118,9 +118,9 @@ function crearWalletBtc(mnemonic: string | null, indexPrivada: number, tipoDirec
     // Derivar raíz BIP32
     const root = bip32.fromSeed(binSeed);
 
-    const path = `m/${derivacion}/0'/${indexPrivada}'/0`;
+    const path = `m/${derivacion}/0'/${indexPrivada}'`;
 
-    const childBitcoin = root.derivePath(path);
+    const childBitcoin = root.derivePath(path + '/0/0');
     const { address: addressBitcoin } = metodoBtc({ 
         pubkey: Buffer.from(childBitcoin.publicKey),
         network: network
@@ -321,6 +321,109 @@ export async function verificarFondosDireccionesBtc(
         totalUnconfirmed,
         totalBtc,
     };
+}
+
+export async function verificarFondosDireccionesBtcTestnet(
+  mnemonic: string | null,
+  wallet: WalletInfo
+) {
+  if (!mnemonic || !bip39.validateMnemonic(mnemonic)) {
+    console.error('Mnemonic inválido.');
+    return;
+  }
+
+  const SATOSHIS_IN_BTC = new BigNumber(1e8);
+  const binSeed = bip39.mnemonicToSeedSync(mnemonic);
+  const root = bip32.fromSeed(binSeed, bitcoin.networks.testnet);
+  const pathBase = wallet.pathBase.replace(/\/[0-1]\/\d+$/, '');
+  const metodoBtc = (() => {
+    switch (wallet.tipoDireccion) {
+      case 'legacy':
+        return bitcoin.payments.p2pkh;
+      case 'segwit':
+        return (args: bitcoin.payments.Payment) =>
+          bitcoin.payments.p2sh({
+            redeem: bitcoin.payments.p2wpkh(args),
+            network: args.network,
+          });
+      case 'native':
+      default:
+        return bitcoin.payments.p2wpkh;
+    }
+  })();
+
+  let totalConfirmed = new BigNumber(0);
+  let totalUnconfirmed = new BigNumber(0);
+
+  for (let cambio = 0; cambio <= 1; cambio++) {
+    let index = 0;
+    let gapCount = 0;
+    const gapLimit = 20;
+
+    while (gapCount < gapLimit) {
+      const fullPath = `${pathBase}/${cambio}/${index}`;
+      const child = root.derivePath(fullPath);
+      const { address } = metodoBtc({
+        pubkey: Buffer.from(child.publicKey),
+        network: bitcoin.networks.testnet,
+      });
+
+      if (!address) {
+        index++;
+        gapCount++;
+        continue;
+      }
+
+      try {
+        const datos = await consultarDireccion(address, "1");
+
+        if (!Array.isArray(datos)) throw new Error('Respuesta inválida');
+
+        let direccionConfirmados = new BigNumber(0);
+        let direccionNoConfirmados = new BigNumber(0);
+
+        for (const utxo of datos) {
+          if (utxo.status.confirmed) {
+            direccionConfirmados = direccionConfirmados.plus(utxo.value);
+          } else {
+            direccionNoConfirmados = direccionNoConfirmados.plus(utxo.value);
+          }
+        }
+
+        const hayFondos = direccionConfirmados.isGreaterThan(0) || direccionNoConfirmados.isGreaterThan(0);
+
+        if (hayFondos) {
+          console.log(`Fondos encontrados en dirección ${address} (${fullPath})`);
+          console.log(`  ✔ Confirmados: ${direccionConfirmados.dividedBy(SATOSHIS_IN_BTC).toFixed()} BTC`);
+          console.log(`  ✔ No confirmados: ${direccionNoConfirmados.dividedBy(SATOSHIS_IN_BTC).toFixed()} BTC`);
+          gapCount = 0;
+        } else {
+          gapCount++;
+        }
+
+        totalConfirmed = totalConfirmed.plus(direccionConfirmados);
+        totalUnconfirmed = totalUnconfirmed.plus(direccionNoConfirmados);
+      } catch (error) {
+        console.warn(`Error al consultar dirección ${address}:`, error);
+        gapCount++;
+      }
+
+      index++;
+    }
+  }
+
+  const totalBtc = totalConfirmed.plus(totalUnconfirmed).dividedBy(SATOSHIS_IN_BTC);
+
+  console.log(`\nResumen:`)
+  console.log(`✔ Total Confirmado: ${totalConfirmed.dividedBy(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
+  console.log(`✔ Total No Confirmado: ${totalUnconfirmed.dividedBy(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
+  console.log(`✔ Total BTC: ${totalBtc.toFixed(8)} BTC`);
+
+  return {
+    totalConfirmed,
+    totalUnconfirmed,
+    totalBtc,
+  };
 }
 
 export function esDireccionValida(address: string, tipo: 'legacy' | 'segwit' | 'native', testnet: boolean = false): boolean {
