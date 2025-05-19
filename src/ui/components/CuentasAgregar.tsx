@@ -1,20 +1,36 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useWallets } from "../../context/WalletContext";
-import { ArrowRight, ChevronLeft } from "lucide-react";
+import { ArrowRight, CheckCircle, ChevronLeft, LogOut } from "lucide-react";
 import btcLogo from "../../assets/crypto/bitcoin.png";
 import ethLogo from "../../assets/crypto/ether.png";
+import { useNavigate } from "react-router-dom";
+import { getAllWallets, getMnemonic } from "../../services/apiService";
+import { useAuth } from "../../context/AuthContext";
+import { crearYGuardarWalletBtc } from "../../services/walletService";
 
 
 function CuentasAgregar() {
+    const { password } = useAuth();
     const { wallets, setWallets } = useWallets();
     const [pasoActual, setPasoActual] = useState<number>(1);
     const [nombreWallet, setNombreWallet] = useState<string>("");
     const [nameTaken, setNameTaken] = useState<boolean>(false);
+    const [nameEmpty, setNameEmpty] = useState<boolean>(false);
+    const [namePolicy, setNamePolicy] = useState<boolean>(false);
     const [selectedCoin, setSelectedCoin] = useState<'BTC' | 'ETH' | null>(null);
+    const [selectedTipo, setSelectedTipo] = useState<'legacy' | 'segwit' | 'native'>('native');
 
-    const siguientePaso = () => {
-        setPasoActual(pasoActual + 1);
+    const navigate = useNavigate();
+
+    const salirAgregar = () => {
+        navigate("/inicio/cuentas");
     }
+
+    const siguientePaso = async () => {
+        if (await validarPaso()) {
+            setPasoActual((prev) => prev + 1);
+        }
+    };
 
     const anteriorPaso = () => {
         if (pasoActual > 1) {
@@ -22,18 +38,72 @@ function CuentasAgregar() {
         }
     }
 
-    const handleWalletsName = () => {
-        if (wallets.some(w => w.nombre === nombreWallet)) {
+    const validarPaso = async (): Promise<boolean> => {
+        switch (pasoActual) {
+            case 1:
+                return handleWalletsName();
+            case 2:
+                if (selectedCoin === 'BTC') {
+                    return await handleCreateBtcWallet();
+                }
+                return true;
+            default:
+                return true;
+        }
+    };
+
+    const handleWalletsName = (): boolean => {
+        let valid = true;
+        if (nombreWallet.length === 0) {
+            setNameEmpty(true);
+            valid = false;
+        }
+        if (wallets.some(w => w.nombre.toLowerCase() === nombreWallet.trim().toLowerCase())) {
             setNameTaken(true);
-            return;
+            valid = false;
+        }
+        return valid;
+    };
+
+    const handleCreateBtcWallet = async (): Promise<boolean> => {
+        console.log(password)
+        if (!password) { 
+            console.error('No se pudo obtener la contraseña del usuario.')
+            return false;
+        }
+        const mnemonic = await getMnemonic(password);
+        if (!mnemonic) {
+            console.error('No se pudo obtener el mnemonic.')
+            return false;
+        }
+
+        let ultimoIndex = 0;
+
+        if (wallets.length !== 0) {
+            let walletsFiltradas = wallets.filter(
+                w => w.tipoMoneda === 'BTC' && w.tipoDireccion === selectedTipo);
+
+            if (walletsFiltradas.length !== 0) {
+                let walletIndiceMasAlto = walletsFiltradas.reduce((max, actual) => {
+                    return actual.indicePrivada > max.indicePrivada ? actual : max;
+                });
+
+                ultimoIndex = walletIndiceMasAlto.indicePrivada + 1;
+            }
+        }
+
+        try {
+            let resultado = await crearYGuardarWalletBtc(nombreWallet, mnemonic, ultimoIndex, selectedTipo);
+            if (resultado) {
+                const allWallets = await getAllWallets();
+                setWallets(allWallets);
+            }
+            return true;
+        } catch (err) {
+            console.error('Error al crear la cuenta: ', err);
+            return false;
         }
     }
-
-    const puedeContinuar = useMemo(() => {
-        if (pasoActual === 1 && !selectedCoin) return false;
-        // Aquí puedes añadir más condiciones en el futuro
-        return true;
-    }, [pasoActual, selectedCoin]);
 
     return(
         <div className="flex flex-col h-full p-4">
@@ -41,7 +111,7 @@ function CuentasAgregar() {
             {pasoActual === 1 && (
                 <>
                     <h1 className="text-xl font-semibold mb-6 text-center">Seleccione el activo de la cuenta:</h1>
-                    <div className="flex justify-center gap-6 mb-10">
+                    <div className="flex justify-center gap-6 mb-10 select-none">
                         {[
                             { id: 'BTC', nombre: 'Bitcoin', logo: btcLogo },
                             { id: 'ETH', nombre: 'Ethereum', logo: ethLogo },
@@ -55,24 +125,132 @@ function CuentasAgregar() {
                                         : 'border-gray-500 bg-neutral-700 hover:bg-neutral-600'}
                                 `}
                             >
-                                <img src={logo} alt={nombre} className="w-10 h-10" />
+                                <img src={logo} alt={nombre} draggable="false" className="w-10 h-10" />
                                 <span className="text-white text-lg font-semibold">{nombre}</span>
                             </button>
                         ))}
                     </div>
+                    {selectedCoin !== null && (
+                        <div className="fade-in flex flex-col items-center">
+                            <h1 className="text-xl font-semibold mt-4 mb-2 text-center">
+                                Seleccione el nombre de la cuenta:
+                            </h1>
+                            <div className="w-full max-w-xs">
+                                <input
+                                    type="text"
+                                    value={nombreWallet || ""}
+                                    onChange={(e) => {
+                                        setNombreWallet(e.target.value);
+                                        setNameTaken(false);
+                                        setNameEmpty(false);
+                                    }}
+                                    className={`w-full bg-neutral-800 hover:bg-neutral-900 
+                                    text-white font-semibold py-2 px-4 rounded-xl shadow-md 
+                                    transition duration-300 
+                                    ${(nameEmpty || nameTaken)
+                                        ? "border-2 border-red-500"
+                                        : "border border-gray-500"
+                                    }`}
+                                />
+                                {nameEmpty && (
+                                    <h2 className="text-center mt-4 text-lg font-semibold text-red-500 select-none">
+                                        Introduzca un nombre
+                                    </h2>
+                                )}
+                                {nameTaken && (
+                                    <h2 className="text-center mt-4 text-lg font-semibold text-red-500 select-none">
+                                        El nombre introducido ya está en uso
+                                    </h2>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
-
 
             {pasoActual === 2 && (
-                <>
-                    <h1 className="text-xl font-semibold mb-4">Seleccione el nombre de la cuenta:</h1>
-                    {/* Aquí iría el campo para nombre de wallet */}
-                </>
+                <div className="mt-4 text-center">
+                    {selectedCoin === 'BTC' ? (
+                        <div className="flex flex-col items-center">
+                            <h2 className="text-xl font-semibold mb-4">Seleccione el tipo de cuenta:</h2>
+
+                            <select
+                                value={selectedTipo || "native"}
+                                onChange={(e) => setSelectedTipo(e.target.value as 'legacy' | 'segwit' | 'native')}
+                                className="bg-neutral-800 text-white cursor-pointer font-semibold py-3 px-5 rounded-xl border-2 border-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all w-80 text-center text-lg"
+                            >
+                                <option value="native">
+                                    Native SegWit
+                                </option>
+                                <option value="segwit">SegWit</option>
+                                <option value="legacy">Legacy</option>
+                            </select>
+
+                            {selectedTipo && (
+                                <div className="mt-6 max-w-lg text-sm text-gray-300 text-center">
+                                    {selectedTipo === 'native' && (
+                                        <>
+                                            <div className="flex justify-center items-center gap-2 mb-1">
+                                                <p className="font-semibold text-green-400">Native SegWit (bech32)</p>
+                                                <span className="text-green-500 text-xs border border-green-500 px-2 py-0.5 rounded-full font-medium">
+                                                    recomendado
+                                                </span>
+                                            </div>
+                                            <p>
+                                                Formato moderno de direcciones que empieza por <code>bc1</code>. Tiene menores comisiones y es ampliamente compatible.
+                                            </p>
+                                        </>
+                                    )}
+                                    {selectedTipo === 'segwit' && (
+                                        <>
+                                            <p className="font-semibold text-yellow-400 mb-1">SegWit (compat):</p>
+                                            <p>
+                                                Direcciones que empiezan por <code>3</code>. Buena compatibilidad con servicios antiguos, aunque no tan eficiente como Native SegWit.
+                                            </p>
+                                        </>
+                                    )}
+                                    {selectedTipo === 'legacy' && (
+                                        <>
+                                            <p className="font-semibold text-red-400 mb-1">Legacy:</p>
+                                            <p>
+                                                Direcciones clásicas que empiezan por <code>1</code>. Altas comisiones y menor eficiencia. Solo recomendable para compatibilidad extrema.
+                                            </p>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    ) : selectedCoin === 'ETH' ? (
+                        <h2 className="text-xl font-semibold">Aquí iría configuración para Ethereum</h2>
+                    ) : null}
+                </div>
             )}
 
-            <div className="flex justify-between mt-auto"> {/* Este div empuja los botones abajo y separa izquierda/derecha */}
-                {pasoActual > 1 && (
+            {pasoActual === 3 && (
+            <>
+                <div
+                className="text-center mt-2 text-lg font-semibold text-green-500"
+                >
+                    <CheckCircle className="inline mr-1" /> 
+                    ¡Cuenta creada correctamente!
+                </div>
+                <h1 className="text-center mt-2 text-lg font-semibold text-white">
+                    Puede consultarla accediendo al menú Cuentas.
+                </h1>
+            </>
+            )}
+
+            <div className="flex justify-between mt-auto select-none"> {/* Este div empuja los botones abajo y separa izquierda/derecha */}
+                {pasoActual === 1 && (
+                    <button
+                        onClick={salirAgregar}
+                        className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-900 text-white font-semibold py-2 px-4 rounded-xl shadow-md border border-gray-500 transition duration-300 cursor-pointer"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        Salir
+                    </button>
+                )}
+                {(pasoActual > 1 && pasoActual < 3) && (
                     <button
                         onClick={anteriorPaso}
                         className="flex items-center gap-2 bg-neutral-800 hover:bg-neutral-900 text-white font-semibold py-2 px-4 rounded-xl shadow-md border border-gray-500 transition duration-300 cursor-pointer"
@@ -83,11 +261,11 @@ function CuentasAgregar() {
                 )}
 
                 <button
-                    onClick={siguientePaso}
+                    onClick={pasoActual === 3 ? salirAgregar : siguientePaso}
                     className="ml-auto flex items-center gap-2 bg-neutral-800 hover:bg-neutral-900 text-white font-semibold py-2 px-4 rounded-xl shadow-md border border-gray-500 transition duration-300 cursor-pointer"
                 >
-                    Siguiente
-                    <ArrowRight className="w-5 h-5" />
+                    {pasoActual === 3 ? 'Continuar' : 'Siguiente'}
+                    {pasoActual === 3 ? <CheckCircle className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
                 </button>
             </div>
         </div>

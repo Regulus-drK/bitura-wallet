@@ -4,8 +4,11 @@ export interface WalletInfo {
     pathBase?: string;
     tipoDireccion?: 'legacy' | 'segwit' | 'native';
     red: 'mainnet' | 'testnet';
-    indicePrivada: number;
+    indicePrivada: number,
     indicePublicaActual: number;
 }
 
-// Para que React pueda acceder a esta interfaz
+export interface WalletStore {
+  walletConfigured: boolean;
+  wallets?: WalletInfo[];
+};

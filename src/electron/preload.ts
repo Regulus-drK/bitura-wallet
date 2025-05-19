@@ -1,12 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
-interface WalletInfo {
-    tipoMoneda: 'BTC' | 'ETH';
-    nombre: string;
-    pathBase?: string;
-    tipoDireccion?: 'legacy' | 'segwit' | 'native';
-    red: 'mainnet' | 'testnet';
-    indiceActual: number;
-}
+import { WalletInfo } from './WalletInfo.js';
 
 contextBridge.exposeInMainWorld('api', {
     closeApp: () => ipcRenderer.send('app/close'),

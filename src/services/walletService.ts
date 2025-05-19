@@ -4,10 +4,8 @@ import { BIP32Factory } from 'bip32';
 import * as ecc from 'tiny-secp256k1';
 import { ethers } from 'ethers';
 import { Buffer } from 'buffer';
-import { p2wpkh } from 'bitcoinjs-lib/src/payments';
 import type { WalletInfo } from '../types/WalletInfo';
 import { addWallet } from './apiService';
-import type { testnet } from 'bitcoinjs-lib/src/networks';
 
 // Crear instancia de bip32 con tiny-secp256k1
 const bip32 = BIP32Factory(ecc);
@@ -68,8 +66,16 @@ export function createWallets(mnemonic: string | null, index: number, testnet?: 
     };
 }
 
+/**
+ * Función para crear una wallet de Bitcoin a partir del mnemonic.
+ * @param mnemonic Mnemonic guardado en .bin
+ * @param indexPrivada Índice de la clave privada a generar
+ * @param tipoDireccion Tipo de la dirección de BTC (Legacy, SegWit..)
+ * @param testnet Opcional, para indicar si es testnet o no
+ * @returns Devuelve un array con información de la wallet
+ */
 export function crearWalletBtc(mnemonic: string | null, indexPrivada: number, tipoDireccion: string, testnet?: boolean) {
-    let network;
+    let network = bitcoin.networks.bitcoin;
     if (testnet) {
         network = bitcoin.networks.testnet;
     }
@@ -126,6 +132,8 @@ export async function crearYGuardarWalletBtc(
     nombre: string, mnemonic: string | null, index: number, 
     tipoDireccion: 'legacy' | 'segwit' | 'native', testnet?: boolean) 
 {
+    if (testnet === undefined) testnet = false;
+
     let network: 'mainnet' | 'testnet';
     if (testnet) {
         network = 'testnet';
@@ -146,7 +154,8 @@ export async function crearYGuardarWalletBtc(
         pathBase: walletBtc.path,
         tipoDireccion: tipoDireccion,
         red: network,
-        indiceActual: walletBtc.index,
+        indicePrivada: index,
+        indicePublicaActual: 0,
     };
 
     const resultado = await addWallet(walletInfo);

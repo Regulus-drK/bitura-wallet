@@ -4,18 +4,7 @@ import path from 'path';
 import { isDev, getJdkPath, getJarPath, savePassword, getPassword, saveMnemonic, getMnemonic, deleteConfigFiles } from './util.js';
 import { spawn } from 'child_process';
 import { EmptyMenu, MenuBar } from './MenuBar.js';
-interface WalletInfo {
-    tipoMoneda: 'BTC' | 'ETH';
-    nombre: string;
-    pathBase?: string;
-    tipoDireccion?: 'legacy' | 'segwit' | 'native';
-    red: 'mainnet' | 'testnet';
-    indiceActual: number;
-}
-interface WalletStore {
-  walletConfigured: boolean;
-  wallets?: WalletInfo[];
-};
+import { WalletStore, WalletInfo } from './WalletInfo.js';
 
 const store = new Store<WalletStore>({
   defaults: {

@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import logoBitura from '../../assets/LogotipoBituraPng.png'
-import { Home, Wallet, Settings, LogOut } from "lucide-react";
+import { Home, Wallet, Settings, LogOut, ArrowUp, ArrowDown } from "lucide-react";
 
 const SidebarMenu = () => {
     const navigate = useNavigate();
@@ -35,6 +35,20 @@ const SidebarMenu = () => {
                 to="/inicio/cuentas" // Meramente informativo para saber a dónde redirige
                 active={location.pathname === "/inicio/cuentas" || location.pathname === '/inicio/cuentas/agregar'}
                 onClick={() => handleLocation("/inicio/cuentas")} 
+            />
+            <SidebarButton 
+                icon={<ArrowUp size={20}/>} 
+                label="Enviar" 
+                to="/inicio" // Meramente informativo para saber a dónde redirige
+                active={location.pathname === "/enviar"}
+                onClick={() => handleLocation("/inicio")} 
+            />            
+            <SidebarButton 
+                icon={<ArrowDown size={20}/>} 
+                label="Recibir" 
+                to="/inicio" // Meramente informativo para saber a dónde redirige
+                active={location.pathname === "/recibir"}
+                onClick={() => handleLocation("/inicio")} 
             />
         </nav>
 
