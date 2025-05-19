@@ -5,7 +5,7 @@ import { walletShouldBeConfigured } from '../../hooks/walletShouldBeConfigured';
 import { useWindowSize } from '../../hooks/useWindowSize';
 import { useAuth } from '../../context/AuthContext';
 import SidebarMenu from '../components/SidebarMenu';
-import { crearWalletBtc, crearYGuardarWalletBtc } from '../../services/walletService';
+import { crearYGuardarWalletBtc } from '../../services/walletService';
 import { useWallets } from '../../context/WalletContext';
 
 function Inicio() {
@@ -20,20 +20,20 @@ function Inicio() {
     enableMenu();
   });
 
-  useEffect(() => {
-    if (!password) return;
+  // useEffect(() => {
+  //   if (!password) return;
 
-    const loadWallet = async () => {
-      const mnemonic = await getMnemonic(password);
-      const wallet = crearWalletBtc(mnemonic, 0, 'native');
+  //   const loadWallet = async () => {
+  //     const mnemonic = await getMnemonic(password);
+  //     const wallet = crearWalletBtc(mnemonic, 0, 'native');
 
-      if (wallet) {
-        setBitcoinAddress(wallet.address);
-      }
-    };
+  //     if (wallet) {
+  //       setBitcoinAddress(wallet.address);
+  //     }
+  //   };
 
-    loadWallet();
-  }, [password]);
+  //   loadWallet();
+  // }, [password]);
 
   useWindowSize({
       width: 1200,

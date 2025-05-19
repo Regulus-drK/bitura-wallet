@@ -33,7 +33,9 @@ const SidebarMenu = () => {
                 icon={<Wallet size={20} />} 
                 label="Cuentas" 
                 to="/inicio/cuentas" // Meramente informativo para saber a dónde redirige
-                active={location.pathname === "/inicio/cuentas" || location.pathname === '/inicio/cuentas/agregar'}
+                active={location.pathname === "/inicio/cuentas" || 
+                    location.pathname === '/inicio/cuentas/agregar' ||
+                    location.pathname === '/inicio/cuentas/datos-cuenta'}
                 onClick={() => handleLocation("/inicio/cuentas")} 
             />
             <SidebarButton 

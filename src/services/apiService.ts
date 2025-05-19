@@ -110,12 +110,12 @@ export async function addWallet(nuevaWallet: WalletInfo): Promise<boolean> {
   return await window.api.addWallet(nuevaWallet);
 }
 
-export async function updateWallet(nombre: string, datosActualizados: Partial<WalletInfo>): Promise<void> {
-  await window.api.updateWallet(nombre, datosActualizados);
+export async function updateWallet(nombre: string, datosActualizados: Partial<WalletInfo>): Promise<boolean> {
+  return await window.api.updateWallet(nombre, datosActualizados);
 }
 
-export async function deleteWallet(nombre: string): Promise<void> {
-  await window.api.deleteWallet(nombre);
+export async function deleteWallet(nombre: string): Promise<boolean> {
+  return await window.api.deleteWallet(nombre);
 }
 
 export async function deleteConfigFiles(inputPassword: string): Promise<boolean> {

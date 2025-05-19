@@ -14,6 +14,8 @@ const Config = React.lazy(() => import('./pages/Config'));
 const PasswordPrompt = React.lazy(() => import('./components/PasswordPrompt'));
 const InicioDashboard = React.lazy(() => import('./components/InicioDashboard'));
 const CuentasAgregar = React.lazy(() => import('./components/CuentasAgregar'));
+const CuentaDatos = React.lazy(() => import('./components/CuentaDatos'));
+
 
 function App() {
   const isConfigured = useWalletConfig();
@@ -29,6 +31,7 @@ function App() {
                 <Route index element={<InicioDashboard/>} />
                 <Route path='cuentas' element={<Cuentas/>} />
                 <Route path='cuentas/agregar' element={<CuentasAgregar />} />
+                <Route path='cuentas/datos-cuenta' element={<CuentaDatos />} />
                 <Route path='config' element={<Config/>} />
               </Route>
               <Route path='/password-prompt' element={<PasswordPrompt/>}/>

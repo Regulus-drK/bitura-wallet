@@ -1,11 +1,11 @@
 export interface WalletInfo {
     tipoMoneda: 'BTC' | 'ETH';
     nombre: string;
-    pathBase?: string;
+    pathBase: string;
     tipoDireccion?: 'legacy' | 'segwit' | 'native';
-    red: 'mainnet' | 'testnet';
+    red?: 'mainnet' | 'testnet';
     indicePrivada: number,
-    indicePublicaActual: number;
+    indicePublicaActual?: number;
 }
 
 export interface WalletStore {
