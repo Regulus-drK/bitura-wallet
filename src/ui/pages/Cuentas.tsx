@@ -8,7 +8,7 @@ import BigNumber from "bignumber.js";
 import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
 import { getMnemonic, getRedBtcSeleccionada } from "../../services/apiService";
-import { verificarFondosDireccionesBtc } from "../../services/walletService";
+import { enviarBtc, verificarFondosDireccionesBtc } from "../../services/walletService";
 
 function Cuentas() {
     const { password } = useAuth();
@@ -38,7 +38,7 @@ function Cuentas() {
                 if (fondosBtc) {
                     setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosBtc.totalBtc }));
                     // const enviarTest = await enviarBtc(
-                    //     fondosBtc.direccionesConFondos, "tb1qlj64u6fqutr0xue85kl55fx0gt4m4urun25p7q", 0.00003, true, BigNumber(300));
+                    //     fondosBtc.direccionesConFondos, "2MuYNBdQWLmsxfXsMFgQPV3su6YmnXJNCcr", 0.00003, redBtcSeleccionada, BigNumber(300));
                     // if (enviarTest) {
                     //     console.log(`Éxito, Input: ${enviarTest.totalInput}\nOutput: ${enviarTest.totalOutput}\nFee: ${enviarTest.fee}\nTxid: ${enviarTest.txid}\nRawTx: ${enviarTest.rawTx}`)
                     // } else {
@@ -71,7 +71,7 @@ function Cuentas() {
         ) : (
             <>
             {walletsBTC.length > 0 && (
-            <div className="w-full max-w-6xl mb-6">
+            <div className="w-full max-w-6xl mb-6 select-none">
                 <h2 className="text-xl font-semibold mb-2 text-left">Bitcoin (BTC)</h2>
                 <ul className="space-y-3">
                     {walletsBTC.map(wallet => (
@@ -115,7 +115,7 @@ function Cuentas() {
             )}
 
             {walletsETH.length > 0 && (
-                <div className="w-full max-w-6xl mb-6">
+                <div className="w-full max-w-6xl mb-6 select-none">
                 <h2 className="text-xl font-semibold mb-2 text-left">Ethereum (ETH)</h2>
                 <ul className="space-y-3">
                     {walletsETH.map(wallet => (
@@ -146,7 +146,7 @@ function Cuentas() {
             onClick={() => navigate('agregar')}
         >
             <Plus className="w-6 h-6" />
-            <span className="text-lg font-semibold">Agregar una nueva cuenta</span>
+            <span className="text-lg font-semibold select-none">Agregar una nueva cuenta</span>
         </button>
         </div>
     );

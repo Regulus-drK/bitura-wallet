@@ -379,7 +379,7 @@ export async function enviarBtc(
   direccionesConFondos: BtcAddressUtxo[],
   destino: string,
   cantidadBtc: number,
-  testnet: boolean = false,
+  redSeleccionada: 'mainnet' | 'testnet',
   feeSat: BigNumber = new BigNumber(500) // fee por defecto
 ) {
   const SATOSHIS_IN_BTC = new BigNumber(1e8);
@@ -387,6 +387,9 @@ export async function enviarBtc(
 
   let totalSeleccionado = new BigNumber(0);
   const utxos: { txid: string; address: string; vout: number; value: number; keyPair: BIP32Interface }[] = [];
+
+  let testnet = false;
+  if (redSeleccionada === 'testnet') testnet = true;
 
   // Recolectar UTXOs confirmados hasta alcanzar la cantidad requerida + fee
   for (const entrada of direccionesConFondos) {
