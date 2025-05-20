@@ -61,6 +61,14 @@ export function onWalletConfigChange(callback: (value: boolean) => void): () => 
   return window.api.onWalletConfigChange(callback);
 }
 
+export async function getRedBtcSeleccionada(): Promise<'mainnet' | 'testnet'> {
+  return window.api.getRedBtcSeleccionada();
+}
+
+export async function setRedBtcSeleccionada(isTestnet: boolean): Promise<boolean> {
+  return window.api.setRedBtcSeleccionada(isTestnet);
+}
+
 export async function savePassword(password: string): Promise<void> {
   return window.api.savePassword(password);
 }

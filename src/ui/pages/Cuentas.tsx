@@ -7,52 +7,71 @@ import ethIcon from "../../assets/crypto/ether.png";
 import BigNumber from "bignumber.js";
 import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
-import { getMnemonic } from "../../services/apiService";
-import { verificarFondosDireccionesBtc, verificarFondosDireccionesBtcTestnet } from "../../services/walletService";
+import { getMnemonic, getRedBtcSeleccionada } from "../../services/apiService";
+import { verificarFondosDireccionesBtc } from "../../services/walletService";
 
 function Cuentas() {
     const { password } = useAuth();
     const { wallets } = useWallets();
     const [saldos, setSaldos] = useState<Record<string, BigNumber>>({});
     const navigate = useNavigate();
+    const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet'>('mainnet');
 
     useEffect(() => {
+        const detectarRedBtcSeleccionada = async () => {
+            setRedBtcSeleccionada(await getRedBtcSeleccionada());
+        }
+        detectarRedBtcSeleccionada();
+    }, []);
+
+    useEffect(() => {
+        if (!password) {
+            navigate("/");
+            return;
+        }
         const obtenerSaldoBtc = async () => {
-            if (!password) return {};
 
             const mnemonic = await getMnemonic(password);
             
-            for (const wallet of wallets.filter(w => w.tipoMoneda === "BTC")) {
-                const fondosBtc = await verificarFondosDireccionesBtcTestnet(mnemonic, wallet);
+            for (const wallet of wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redBtcSeleccionada)) {
+                const fondosBtc = await verificarFondosDireccionesBtc(mnemonic, wallet, redBtcSeleccionada);
                 if (fondosBtc) {
                     setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosBtc.totalBtc }));
+                    // const enviarTest = await enviarBtc(
+                    //     fondosBtc.direccionesConFondos, "tb1qlj64u6fqutr0xue85kl55fx0gt4m4urun25p7q", 0.00003, true, BigNumber(300));
+                    // if (enviarTest) {
+                    //     console.log(`Éxito, Input: ${enviarTest.totalInput}\nOutput: ${enviarTest.totalOutput}\nFee: ${enviarTest.fee}\nTxid: ${enviarTest.txid}\nRawTx: ${enviarTest.rawTx}`)
+                    // } else {
+                    //     console.error('Fallo al enviar BTC.')
+                    // }
                 } else {
                     console.error("Error al obtener los saldos de BTC");
                 }
             }
         }
         obtenerSaldoBtc();
-    }, [wallets, password]);
+    }, [wallets, password, redBtcSeleccionada]);
+
 
     const handleClickWallet = (wallet: WalletInfo) => {
         navigate('/inicio/cuentas/datos-cuenta', { state: { wallet } });
     };
 
-    const walletsBTC = wallets.filter(wallet => wallet.tipoMoneda === 'BTC');
+    const walletsBTC = wallets.filter(wallet => wallet.tipoMoneda === 'BTC' && wallet.red === redBtcSeleccionada);
     const walletsETH = wallets.filter(wallet => wallet.tipoMoneda === 'ETH');
 
     return (
         <div className="flex flex-col items-center h-full p-4 overflow-y-auto">
         <h1 className="text-2xl font-bold mb-5">Cuentas</h1>
 
-        {wallets.length === 0 ? (
+        {walletsBTC.length === 0 && walletsETH.length === 0 ? (
             <h1 className="text-white bg-neutral-700 mb-2 rounded-xl px-6 py-4 flex text-xl">
             Todavía no hay cuentas creadas. Añada una para empezar.
             </h1>
         ) : (
             <>
             {walletsBTC.length > 0 && (
-                <div className="w-full mb-6">
+            <div className="w-full max-w-6xl mb-6">
                 <h2 className="text-xl font-semibold mb-2 text-left">Bitcoin (BTC)</h2>
                 <ul className="space-y-3">
                     {walletsBTC.map(wallet => (
@@ -61,22 +80,42 @@ function Cuentas() {
                         className="flex items-center justify-between bg-neutral-700 text-white px-5 py-3 rounded-xl cursor-pointer hover:bg-neutral-600 transition"
                         onClick={() => handleClickWallet(wallet)}
                         >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3.5">
                             <img src={btcIcon} alt={wallet.nombre} draggable="false" className="w-6.5 h-6.5" />
                             <span className="font-medium text-lg">{wallet.nombre}</span>
+                            {wallet.tipoDireccion === "native" && 
+                            <span className="text-green-500 text-xs border border-green-500 px-2 py-0.5 rounded-full font-medium">
+                                Native SegWit
+                            </span>
+                            }
+                            {wallet.tipoDireccion === "segwit" && 
+                            <span className="text-yellow-400 text-xs border border-yellow-400 px-2 py-0.5 rounded-full font-medium">
+                                SegWit
+                            </span>
+                            }
+                            {wallet.tipoDireccion === "legacy" && 
+                            <span className="text-red-400 text-xs border border-red-400 px-2 py-0.5 rounded-full font-medium">
+                                Legacy
+                            </span>
+                            }
+                            {wallet.red === "testnet" && 
+                            <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
+                                testnet
+                            </span>
+                            }
                         </div>
                         <span className="text-sm text-gray-300">
-                            Saldo: {saldos[wallet.nombre] ? saldos[wallet.nombre].toFixed(8) + " BTC" : "Cargando..."}
+                            Saldo: {saldos[wallet.nombre] ? saldos[wallet.nombre].toFixed(5) + " BTC" : "Cargando..."}
                         </span>
                         </div>
                     </li>
                     ))}
                 </ul>
-                </div>
+            </div>
             )}
 
             {walletsETH.length > 0 && (
-                <div className="w-full mb-6">
+                <div className="w-full max-w-6xl mb-6">
                 <h2 className="text-xl font-semibold mb-2 text-left">Ethereum (ETH)</h2>
                 <ul className="space-y-3">
                     {walletsETH.map(wallet => (
@@ -85,7 +124,7 @@ function Cuentas() {
                         className="flex items-center justify-between bg-neutral-700 text-white px-5 py-3 rounded-xl cursor-pointer hover:bg-neutral-600 transition"
                         onClick={() => handleClickWallet(wallet)}
                         >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3.5">
                             <img src={ethIcon} alt={wallet.nombre} draggable="false" className="w-6.5 h-6.5" />
                             <span className="font-medium text-lg">{wallet.nombre}</span>
                         </div>

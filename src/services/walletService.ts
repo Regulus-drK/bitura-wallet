@@ -1,14 +1,14 @@
 import * as bip39 from 'bip39';
 import * as bitcoin from 'bitcoinjs-lib';
-import { BIP32Factory } from 'bip32';
+import { BIP32Factory, type BIP32Interface } from 'bip32';
 import * as ecc from 'tiny-secp256k1';
 import ECPairFactory from 'ecpair';
 import { ethers } from 'ethers';
 import BigNumber from "bignumber.js";
 import { Buffer } from 'buffer';
 import type { WalletInfo } from '../types/WalletInfo';
-import { addWallet, consultarDireccion, updateWallet } from './apiService';
-import { parseBtcResponse, type BtcResponse, type BtcTestResponse, type ParsedBtcResponse } from '../types/BtcBalance';
+import { addWallet, updateWallet } from './apiService';
+import { type BtcAddressUtxo} from '../types/BtcBalance';
 
 // Crear instancia de bip32 con tiny-secp256k1
 const bip32 = BIP32Factory(ecc);
@@ -135,16 +135,10 @@ function crearWalletBtc(mnemonic: string | null, indexPrivada: number, tipoDirec
 
 export async function crearYGuardarWalletBtc(
     nombre: string, mnemonic: string | null, index: number, 
-    tipoDireccion: 'legacy' | 'segwit' | 'native', testnet?: boolean) 
+    tipoDireccion: 'legacy' | 'segwit' | 'native', redSeleccionada: 'mainnet' | 'testnet') 
 {
-    if (testnet === undefined) testnet = false;
-
-    let network: 'mainnet' | 'testnet';
-    if (testnet) {
-        network = 'testnet';
-    } else {
-        network = 'mainnet';
-    }
+    let testnet = false;
+    if (redSeleccionada === 'testnet') testnet = true;
 
     const walletBtc = crearWalletBtc(mnemonic, index, tipoDireccion, testnet);
     if (!walletBtc) {
@@ -158,7 +152,7 @@ export async function crearYGuardarWalletBtc(
         nombre: nombre,
         pathBase: walletBtc.path,
         tipoDireccion: tipoDireccion,
-        red: network,
+        red: redSeleccionada,
         indicePrivada: index,
         indicePublicaActual: 0,
         direccionPublica: walletBtc.address
@@ -230,46 +224,46 @@ export async function crearDireccionPublicaBtc(mnemonic: string | null, cuenta: 
 }
 
 export async function verificarFondosDireccionesBtc(
-    mnemonic: string | null,
-    wallet: WalletInfo,
-    testnet: boolean = false
+  mnemonic: string | null,
+  wallet: WalletInfo,
+  redSeleccionada: 'mainnet' | 'testnet'
 ) {
     if (!mnemonic || !validarMnemonic(mnemonic)) {
         console.error("Mnemonic inválido.");
         return;
     }
 
+    let testnet = false;
+    if (redSeleccionada === 'testnet') testnet = true;
+
     const SATOSHIS_IN_BTC = new BigNumber(1e8);
     const binSeed = bip39.mnemonicToSeedSync(mnemonic);
-    const root = bip32.fromSeed(binSeed);
     const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+    const apiBase = testnet ? "https://mempool.space/testnet/api" : "https://mempool.space/api";
+    const root = bip32.fromSeed(binSeed, network);
     const pathBase = wallet.pathBase.replace(/\/[0-1]\/\d+$/, '');
+
     const metodoBtc = (() => {
         switch (wallet.tipoDireccion) {
             case 'legacy':
                 return bitcoin.payments.p2pkh;
             case 'segwit':
                 return (args: bitcoin.payments.Payment) =>
-                    bitcoin.payments.p2sh({
-                        redeem: bitcoin.payments.p2wpkh(args),
-                        network: args.network,
-                    });
+                bitcoin.payments.p2sh({
+                    redeem: bitcoin.payments.p2wpkh(args),
+                    network: args.network,
+                });
             case 'native':
             default:
                 return bitcoin.payments.p2wpkh;
         }
     })();
 
-    let totalConfirmed = new BigNumber(0);
-    let totalUnconfirmed = new BigNumber(0);
+    const direcciones: { path: string; address: string; keyPair: BIP32Interface }[] = [];
 
-    // Recorremos tanto direcciones externas como de cambio
+    // Derivar 20 externas y 20 de cambio (como en tu versión funcional)
     for (let cambio = 0; cambio <= 1; cambio++) {
-        let index = 0;
-        let gapCount = 0;
-        const gapLimit = 20;
-
-        while (gapCount < gapLimit) {
+        for (let index = 0; index < 20; index++) {
             const fullPath = `${pathBase}/${cambio}/${index}`;
             const child = root.derivePath(fullPath);
             const { address } = metodoBtc({
@@ -277,153 +271,83 @@ export async function verificarFondosDireccionesBtc(
                 network,
             });
 
-            if (!address) {
-                index++;
-                gapCount++;
-                continue;
+            if (address) {
+                direcciones.push({ path: fullPath, address, keyPair: child });
             }
-
-            try {
-                const datosRaw = await consultarDireccion(address, "1");
-                const datos: ParsedBtcResponse = parseBtcResponse(datosRaw as BtcResponse);
-
-                const hayFondos = datos.confirmedSats.isGreaterThan(0) || datos.unconfirmedSats.isGreaterThan(0);
-
-                if (hayFondos) {
-                    console.log(`Fondos encontrados en dirección ${address} (${fullPath})`);
-                    console.log(`  ✔ Confirmados: ${datos.confirmedBtc.toFixed()} BTC`);
-                    console.log(`  ✔ No confirmados: ${datos.unconfirmedBtc.toFixed()} BTC`);
-                    gapCount = 0; // Reset gap
-                } else {
-                    gapCount++;
-                }
-
-                totalConfirmed = totalConfirmed.plus(datos.confirmedSats);
-                totalUnconfirmed = totalUnconfirmed.plus(datos.unconfirmedSats);
-            } catch (error) {
-                console.warn(`Error al consultar dirección ${address}:`, error);
-                gapCount++; // contamos como vacía si hay error
-            }
-
-            index++;
         }
     }
 
-    const totalBtc = totalConfirmed.plus(totalUnconfirmed).dividedBy(SATOSHIS_IN_BTC);
+    // Consulta de UTXOs
+    const respuestas = await Promise.allSettled(
+        direcciones.map(dir =>
+        fetch(`${apiBase}/address/${dir.address}/utxo`)
+            .then(r => r.json())
+            .then((utxos) => ({ path: dir.path, address: dir.address, utxos, keyPair: dir.keyPair }))
+        )
+    );
 
-    console.log(`\nResumen:`)
-    console.log(`✔ Total Confirmado: ${totalConfirmed.dividedBy(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
-    console.log(`✔ Total No Confirmado: ${totalUnconfirmed.dividedBy(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
-    console.log(`✔ Total BTC: ${totalBtc.toFixed(8)} BTC`);
+    let totalConfirmed = new BigNumber(0);
+    let totalUnconfirmed = new BigNumber(0);
+    const direccionesConFondos: BtcAddressUtxo[] = [];
+
+    for (const respuesta of respuestas) {
+        if (respuesta.status === "fulfilled") {
+            const { path, address, utxos, keyPair } = respuesta.value;
+            let confirmados = new BigNumber(0);
+            let noConfirmados = new BigNumber(0);
+
+        for (const utxo of utxos) {
+            if (utxo.status.confirmed) {
+                confirmados = confirmados.plus(utxo.value);
+            } else {
+                noConfirmados = noConfirmados.plus(utxo.value);
+            }
+        }
+
+        const total = confirmados.plus(noConfirmados);
+        if (total.isGreaterThan(0)) {
+            direccionesConFondos.push({ path, address, utxos, keyPair });
+            console.log(`✔ Fondos en ${address} (${path})`);
+            console.log(`  Confirmados: ${confirmados.div(SATOSHIS_IN_BTC).toFixed()} BTC`);
+            console.log(`  No confirmados: ${noConfirmados.div(SATOSHIS_IN_BTC).toFixed()} BTC`);
+        }
+
+        totalConfirmed = totalConfirmed.plus(confirmados);
+        totalUnconfirmed = totalUnconfirmed.plus(noConfirmados);
+        }
+    }
+
+    // Busca dirección de cambio con fondos para la hora de enviar BTC
+    let cambioConFondos = direccionesConFondos.find(d => d.path.includes('/1/'));
+
+    // Si no hay cambio con fondos, añade la primera dirección de cambio derivada (aunque sin fondos)
+    if (!cambioConFondos) {
+        const primeraDireccionCambio = direcciones.find(d => d.path.includes('/1/'));
+        if (primeraDireccionCambio) {
+        // Insertamos la dirección de cambio aunque no tenga fondos, con utxos vacíos
+        cambioConFondos = { 
+            path: primeraDireccionCambio.path, 
+            address: primeraDireccionCambio.address, 
+            utxos: [], 
+            keyPair: primeraDireccionCambio.keyPair 
+        };
+        direccionesConFondos.push(cambioConFondos);
+        }
+    }
+
+    const totalBtc = totalConfirmed.plus(totalUnconfirmed).div(SATOSHIS_IN_BTC);
+
+    console.log(`\nResumen total:`);
+    console.log(`✔ Confirmado: ${totalConfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
+    console.log(`✔ No confirmado: ${totalUnconfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
+    console.log(`✔ Total: ${totalBtc.toFixed(8)} BTC`);
 
     return {
         totalConfirmed,
         totalUnconfirmed,
         totalBtc,
+        direccionesConFondos, // Para usar en envío
     };
-}
-
-export async function verificarFondosDireccionesBtcTestnet(
-  mnemonic: string | null,
-  wallet: WalletInfo
-) {
-  if (!mnemonic || !bip39.validateMnemonic(mnemonic)) {
-    console.error('Mnemonic inválido.');
-    return;
-  }
-
-  const SATOSHIS_IN_BTC = new BigNumber(1e8);
-  const binSeed = bip39.mnemonicToSeedSync(mnemonic);
-  const root = bip32.fromSeed(binSeed, bitcoin.networks.testnet);
-  const pathBase = wallet.pathBase.replace(/\/[0-1]\/\d+$/, '');
-  const metodoBtc = (() => {
-    switch (wallet.tipoDireccion) {
-      case 'legacy':
-        return bitcoin.payments.p2pkh;
-      case 'segwit':
-        return (args: bitcoin.payments.Payment) =>
-          bitcoin.payments.p2sh({
-            redeem: bitcoin.payments.p2wpkh(args),
-            network: args.network,
-          });
-      case 'native':
-      default:
-        return bitcoin.payments.p2wpkh;
-    }
-  })();
-
-  let totalConfirmed = new BigNumber(0);
-  let totalUnconfirmed = new BigNumber(0);
-
-  for (let cambio = 0; cambio <= 1; cambio++) {
-    let index = 0;
-    let gapCount = 0;
-    const gapLimit = 20;
-
-    while (gapCount < gapLimit) {
-      const fullPath = `${pathBase}/${cambio}/${index}`;
-      const child = root.derivePath(fullPath);
-      const { address } = metodoBtc({
-        pubkey: Buffer.from(child.publicKey),
-        network: bitcoin.networks.testnet,
-      });
-
-      if (!address) {
-        index++;
-        gapCount++;
-        continue;
-      }
-
-      try {
-        const datos = await consultarDireccion(address, "1");
-
-        if (!Array.isArray(datos)) throw new Error('Respuesta inválida');
-
-        let direccionConfirmados = new BigNumber(0);
-        let direccionNoConfirmados = new BigNumber(0);
-
-        for (const utxo of datos) {
-          if (utxo.status.confirmed) {
-            direccionConfirmados = direccionConfirmados.plus(utxo.value);
-          } else {
-            direccionNoConfirmados = direccionNoConfirmados.plus(utxo.value);
-          }
-        }
-
-        const hayFondos = direccionConfirmados.isGreaterThan(0) || direccionNoConfirmados.isGreaterThan(0);
-
-        if (hayFondos) {
-          console.log(`Fondos encontrados en dirección ${address} (${fullPath})`);
-          console.log(`  ✔ Confirmados: ${direccionConfirmados.dividedBy(SATOSHIS_IN_BTC).toFixed()} BTC`);
-          console.log(`  ✔ No confirmados: ${direccionNoConfirmados.dividedBy(SATOSHIS_IN_BTC).toFixed()} BTC`);
-          gapCount = 0;
-        } else {
-          gapCount++;
-        }
-
-        totalConfirmed = totalConfirmed.plus(direccionConfirmados);
-        totalUnconfirmed = totalUnconfirmed.plus(direccionNoConfirmados);
-      } catch (error) {
-        console.warn(`Error al consultar dirección ${address}:`, error);
-        gapCount++;
-      }
-
-      index++;
-    }
-  }
-
-  const totalBtc = totalConfirmed.plus(totalUnconfirmed).dividedBy(SATOSHIS_IN_BTC);
-
-  console.log(`\nResumen:`)
-  console.log(`✔ Total Confirmado: ${totalConfirmed.dividedBy(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
-  console.log(`✔ Total No Confirmado: ${totalUnconfirmed.dividedBy(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
-  console.log(`✔ Total BTC: ${totalBtc.toFixed(8)} BTC`);
-
-  return {
-    totalConfirmed,
-    totalUnconfirmed,
-    totalBtc,
-  };
 }
 
 export function esDireccionValida(address: string, tipo: 'legacy' | 'segwit' | 'native', testnet: boolean = false): boolean {
@@ -450,151 +374,147 @@ export function esDireccionValida(address: string, tipo: 'legacy' | 'segwit' | '
     }
 }
 
-// Dios sabe si esto funcionará
+// FUNCIONA.
 export async function enviarBtc(
-  mnemonic: string,
-  wallet: WalletInfo,
+  direccionesConFondos: BtcAddressUtxo[],
   destino: string,
   cantidadBtc: number,
   testnet: boolean = false,
   feeSat: BigNumber = new BigNumber(500) // fee por defecto
 ) {
-    const SATOSHIS_IN_BTC = new BigNumber(1e8);
-    const cantidadSatoshis = new BigNumber(cantidadBtc).multipliedBy(SATOSHIS_IN_BTC);
+  const SATOSHIS_IN_BTC = new BigNumber(1e8);
+  const cantidadSatoshis = new BigNumber(cantidadBtc).multipliedBy(SATOSHIS_IN_BTC);
 
-    const binSeed = bip39.mnemonicToSeedSync(mnemonic);
-    const root = bip32.fromSeed(binSeed);
-    const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+  let totalSeleccionado = new BigNumber(0);
+  const utxos: { txid: string; address: string; vout: number; value: number; keyPair: BIP32Interface }[] = [];
 
-    const pathBase = wallet.pathBase.replace(/\/[0-1]\/\d+$/, '');
-    const metodoBtc = (() => {
-        switch (wallet.tipoDireccion) {
-        case 'legacy':
-            return bitcoin.payments.p2pkh;
-        case 'segwit':
-            return (args: bitcoin.payments.Payment) =>
-            bitcoin.payments.p2sh({
-                redeem: bitcoin.payments.p2wpkh(args),
-                network: args.network,
-            });
-        case 'native':
-        default:
-            return bitcoin.payments.p2wpkh;
+  // Recolectar UTXOs confirmados hasta alcanzar la cantidad requerida + fee
+  for (const entrada of direccionesConFondos) {
+    for (const utxo of entrada.utxos) {
+      utxos.push({
+        txid: utxo.txid,
+        address: entrada.address,
+        vout: utxo.vout,
+        value: utxo.value,
+        keyPair: entrada.keyPair!,
+      });
+      totalSeleccionado = totalSeleccionado.plus(utxo.value);
+
+      if (totalSeleccionado.isGreaterThanOrEqualTo(cantidadSatoshis.plus(feeSat))) {
+        break;
+      }
+    }
+
+    if (totalSeleccionado.isGreaterThanOrEqualTo(cantidadSatoshis.plus(feeSat))) {
+      break;
+    }
+  }
+
+  if (totalSeleccionado.isLessThan(cantidadSatoshis.plus(feeSat))) {
+    throw new Error('Fondos insuficientes.');
+  }
+
+  const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+
+  const metodoBtc = (() => {
+    const tipo = direccionesConFondos[0]?.address?.startsWith('1')
+      ? 'legacy'
+      : direccionesConFondos[0]?.address?.startsWith('3')
+      ? 'segwit'
+      : 'native';
+
+    switch (tipo) {
+      case 'legacy':
+        return bitcoin.payments.p2pkh;
+      case 'segwit':
+        return (args: bitcoin.payments.Payment) =>
+          bitcoin.payments.p2sh({
+            redeem: bitcoin.payments.p2wpkh(args),
+            network: args.network,
+          });
+      default:
+        return bitcoin.payments.p2wpkh;
+    }
+  })();
+
+  const psbt = new bitcoin.Psbt({ network });
+
+  for (const utxo of utxos) {
+    psbt.addInput({
+      hash: utxo.txid,
+      index: utxo.vout,
+      witnessUtxo: {
+        script: metodoBtc({ pubkey: Buffer.from(utxo.keyPair.publicKey), network }).output!,
+        value: utxo.value,
+      },
+    });
+  }
+
+  psbt.addOutput({
+    address: destino,
+    value: cantidadSatoshis.toNumber(),
+  });
+
+  const cambioRestante = totalSeleccionado.minus(cantidadSatoshis.plus(feeSat));
+  if (cambioRestante.isGreaterThan(0)) {
+    const dirCambio = direccionesConFondos.find((d) => d.path.includes('/1/'));
+    if (!dirCambio) {
+        throw new Error("Error FATAL: No se ha encontrado dirección de cambio")
+    }
+    psbt.addOutput({
+      address: dirCambio.address,
+      value: cambioRestante.toNumber(),
+    });
+  }
+
+    // Firmar inputs
+    utxos.forEach((utxo, i) => {
+        const keyPair = utxo.keyPair;
+        
+        if (!keyPair) {
+            throw new Error(`No se encontró keyPair para la dirección ${utxo.address}`);
         }
-    })();
 
-    let utxos: { txid: string; vout: number; value: number; keyPair: any }[] = [];
-    let totalSeleccionado = new BigNumber(0);
-
-    // Función para obtener UTXOs desde Blockstream API
-    async function fetchUtxos(address: string, keyPair: any) {
-        const url = testnet
-        ? `https://blockstream.info/testnet/api/address/${address}/utxo`
-        : `https://blockstream.info/api/address/${address}/utxo`;
+        if (!keyPair.privateKey) {
+            throw new Error(`El keyPair de ${utxo.address} no tiene privateKey`);
+        }
 
         try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Error al obtener UTXOs: ${response.statusText}`);
+            // Convertir BIP32Interface a ECPair (que implementa Signer)
+            const ecPair = ECPair.fromPrivateKey(
+                Buffer.from(keyPair.privateKey),
+                {
+                    network: testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin,
+                }
+            );
 
-        const data: Array<{ txid: string; vout: number; value: number }> = await response.json();
+            // Crear objeto compatible con Signer (con publicKey tipo Buffer)
+            const signer: bitcoin.Signer = {
+                publicKey: Buffer.from(ecPair.publicKey),
+                sign: (hash: Buffer) => {
+                    const signature = ecPair.sign(hash);
+                    return Buffer.from(signature);
+                },
+            };
 
-        data.forEach((utxo) => {
-            utxos.push({
-            txid: utxo.txid,
-            vout: utxo.vout,
-            value: utxo.value,
-            keyPair,
+
+            // Firmar el input
+            psbt.signInput(i, signer);
+            
+            // Opcional: Validar firma inmediatamente
+            const isValid = psbt.validateSignaturesOfInput(i, (pubkey, msghash, signature) => {
+                return ECPair.fromPublicKey(pubkey).verify(msghash, signature);
             });
-            totalSeleccionado = totalSeleccionado.plus(utxo.value);
-        });
-        } catch (error) {
-        console.warn(`Error fetch UTXOs para ${address}:`, error);
+            
+            if (!isValid) {
+                throw new Error(`Firma inválida para el input ${i}`);
+            }
+        } catch (e) {
+            console.error(`❌ Error firmando input ${i}:`, e);
+            throw new Error(`No se pudo firmar el input ${i}: ${e instanceof Error ? e.message : String(e)}`);
         }
-    }
-
-    // Recorremos direcciones externas y de cambio
-    for (let cambio = 0; cambio <= 1; cambio++) {
-        let index = 0;
-        let gapCount = 0;
-        const gapLimit = 20;
-
-        while (
-        gapCount < gapLimit &&
-        totalSeleccionado.isLessThan(cantidadSatoshis.plus(feeSat))
-        ) {
-        const path = `${pathBase}/${cambio}/${index}`;
-        const child = root.derivePath(path);
-        const { address } = metodoBtc({ pubkey: Buffer.from(child.publicKey), network });
-
-        if (!address) {
-            gapCount++;
-            index++;
-            continue;
-        }
-
-        const utxosPrevios = utxos.length;
-
-        await fetchUtxos(address, child);
-
-        if (utxos.length > utxosPrevios) {
-            gapCount = 0; // reiniciamos gap si encontramos utxos
-        } else {
-            gapCount++;
-        }
-
-        if (totalSeleccionado.isGreaterThanOrEqualTo(cantidadSatoshis.plus(feeSat))) {
-            break; // Ya tenemos suficientes fondos
-        }
-
-        index++;
-        }
-
-        if (totalSeleccionado.isGreaterThanOrEqualTo(cantidadSatoshis.plus(feeSat))) {
-        break; // Ya tenemos suficientes fondos
-        }
-    }
-
-    if (totalSeleccionado.isLessThan(cantidadSatoshis.plus(feeSat))) {
-        throw new Error('Fondos insuficientes.');
-    }
-
-    // Crear la transacción
-    const psbt = new bitcoin.Psbt({ network });
-
-    for (const utxo of utxos) {
-        psbt.addInput({
-        hash: utxo.txid,
-        index: utxo.vout,
-        witnessUtxo: {
-            script: metodoBtc({ pubkey: utxo.keyPair.publicKey, network }).output!,
-            value: utxo.value,
-        },
-        });
-    }
-
-    psbt.addOutput({
-        address: destino,
-        value: cantidadSatoshis.toNumber(),
     });
 
-    const cambioRestante = totalSeleccionado.minus(cantidadSatoshis.plus(feeSat));
-    if (cambioRestante.isGreaterThan(0)) {
-        const cambioPath = `${pathBase}/1/0`;
-        const cambioKey = root.derivePath(cambioPath);
-        const { address: direccionCambio } = metodoBtc({ pubkey: Buffer.from(cambioKey.publicKey), network });
-        if (!direccionCambio) throw new Error('Error derivando dirección de cambio');
-        psbt.addOutput({
-        address: direccionCambio,
-        value: cambioRestante.toNumber(),
-        });
-    }
-
-    // Firmar cada input
-    utxos.forEach((utxo, i) => {
-        psbt.signInput(i, utxo.keyPair);
-    });
-
-    // Validar y finalizar
     psbt.validateSignaturesOfAllInputs((pubkey, msghash, signature) =>
         ECPair.fromPublicKey(pubkey).verify(msghash, signature)
     );
@@ -602,32 +522,29 @@ export async function enviarBtc(
 
     const txHex = psbt.extractTransaction().toHex();
 
-    // Función para enviar la tx a Blockstream
-    async function broadcastTx(txHex: string, testnet: boolean): Promise<string> {
+    // Enviar a la red
+    async function broadcastTx(txHex: string): Promise<string> {
         const url = testnet
-            ? 'https://blockstream.info/testnet/api/tx'
-            : 'https://blockstream.info/api/tx';
+        ? 'https://mempool.space/testnet/api/tx'
+        : 'https://mempool.space/api/tx';
 
         const response = await fetch(url, {
-            method: 'POST',
-            headers: {
+        method: 'POST',
+        headers: {
             'Content-Type': 'text/plain',
-            },
-            body: txHex,
+        },
+        body: txHex,
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Error al enviar la transacción: ${response.status} - ${errorText}`);
+        const errorText = await response.text();
+        throw new Error(`Error al enviar la transacción: ${response.status} - ${errorText}`);
         }
 
-        // La respuesta es el txid de la tx propagada
-        const txid = await response.text();
-        return txid;
+        return await response.text(); // devuelve el txid
     }
 
-    // Llamada para enviar
-    const txid = await broadcastTx(txHex, testnet);
+    const txid = await broadcastTx(txHex);
 
     return {
         txid,

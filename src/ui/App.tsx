@@ -10,7 +10,7 @@ const WalletSetup = React.lazy(() => import('./pages/WalletSetup'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Inicio = React.lazy(() => import('./pages/Inicio'));
 const Cuentas = React.lazy(() => import('./pages/Cuentas'));
-const Config = React.lazy(() => import('./pages/Config'));
+const Ajustes = React.lazy(() => import('./pages/Ajustes'));
 const PasswordPrompt = React.lazy(() => import('./components/PasswordPrompt'));
 const InicioDashboard = React.lazy(() => import('./components/InicioDashboard'));
 const CuentasAgregar = React.lazy(() => import('./components/CuentasAgregar'));
@@ -32,7 +32,7 @@ function App() {
                 <Route path='cuentas' element={<Cuentas/>} />
                 <Route path='cuentas/agregar' element={<CuentasAgregar />} />
                 <Route path='cuentas/datos-cuenta' element={<CuentaDatos />} />
-                <Route path='config' element={<Config/>} />
+                <Route path='config' element={<Ajustes/>} />
               </Route>
               <Route path='/password-prompt' element={<PasswordPrompt/>}/>
             </Routes>

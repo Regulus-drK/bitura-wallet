@@ -31,6 +31,10 @@ contextBridge.exposeInMainWorld('api', {
             ipcRenderer.off('wallet:configChanged', listener);
         };
     },
+    getRedBtcSeleccionada: () => ipcRenderer.invoke('wallet:getRedBtcSeleccionada'),
+    setRedBtcSeleccionada: (isTestnet: boolean) => {
+        ipcRenderer.invoke("wallet:setRedBtcSeleccionada", isTestnet);
+    },
     // Llamadas API Java
     generateMnemonic: async (args: string) => ipcRenderer.invoke('java:generateMnemonic', args),
     listarPrecios: async () => ipcRenderer.invoke('java:listarPrecios'),

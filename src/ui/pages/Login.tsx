@@ -93,7 +93,7 @@ function Login() {
             <button
                 onClick={handleCloseApp}
                 disabled={loginSuccessful}
-                className={`px-4 py-2 rounded-xl shadow-md border flex items-center gap-2 transition duration-300
+                className={`px-4 py-2 rounded-xl shadow-md border select-none flex items-center gap-2 transition duration-300
                     ${(loginSuccessful) 
                         ? "bg-neutral-600 text-gray-300 cursor-not-allowed border-gray-400" 
                         : "border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"}`
@@ -106,7 +106,7 @@ function Login() {
             <button
                 onClick={handleVerifyLogin}
                 disabled={loginSuccessful || !password}
-                className={`px-4 py-2 rounded-xl shadow-md border flex items-center gap-2 transition duration-300
+                className={`px-4 py-2 rounded-xl shadow-md border select-none flex items-center gap-2 transition duration-300
                     ${(loginSuccessful || !password) 
                         ? "bg-neutral-600 text-gray-300 cursor-not-allowed border-gray-400" 
                         : "border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"}`

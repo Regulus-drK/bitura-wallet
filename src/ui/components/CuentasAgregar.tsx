@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWallets } from "../../context/WalletContext";
 import { ArrowRight, CheckCircle, ChevronLeft, LogOut } from "lucide-react";
 import btcLogo from "../../assets/crypto/bitcoin.png";
 import ethLogo from "../../assets/crypto/ether.png";
 import { useNavigate } from "react-router-dom";
-import { getAllWallets, getMnemonic } from "../../services/apiService";
+import { getAllWallets, getMnemonic, getRedBtcSeleccionada } from "../../services/apiService";
 import { useAuth } from "../../context/AuthContext";
 import { crearYGuardarWalletBtc, crearYGuardarWalletEth } from "../../services/walletService";
 
@@ -16,8 +16,17 @@ function CuentasAgregar() {
     const [nombreWallet, setNombreWallet] = useState<string>("");
     const [nameTaken, setNameTaken] = useState<boolean>(false);
     const [nameEmpty, setNameEmpty] = useState<boolean>(false);
+    const [nameTooLong, setNameTooLong] = useState<boolean>(false);
     const [selectedCoin, setSelectedCoin] = useState<'BTC' | 'ETH' | null>(null);
     const [selectedTipo, setSelectedTipo] = useState<'legacy' | 'segwit' | 'native'>('native');
+    const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet'>('mainnet');
+
+    useEffect(() => {
+        const detectarRedBtcSeleccionada = async () => {
+            setRedBtcSeleccionada(await getRedBtcSeleccionada());
+        }
+        detectarRedBtcSeleccionada();
+    }, []);
 
     const navigate = useNavigate();
 
@@ -62,7 +71,26 @@ function CuentasAgregar() {
             setNameEmpty(true);
             valid = false;
         }
-        if (wallets.some(w => w.nombre.toLowerCase() === nombreWallet.trim().toLowerCase())) {
+        if (nombreWallet.length > 20) {
+            setNameTooLong(true);
+            valid = false;
+        }
+        const nombreMinusculas = nombreWallet.trim().toLowerCase();
+
+        const nombreDuplicado = wallets.some(w => {
+            const nombreW = w.nombre.trim().toLowerCase();
+
+            if (w.tipoMoneda === 'BTC') {
+                // Si la wallet es BTC, comparamos solo si están en la misma red
+                return nombreW === nombreMinusculas && w.red === redBtcSeleccionada;
+            } else if (w.tipoMoneda === 'ETH') {
+                // ETH no tiene red, pero el nombre no puede coincidir con ningún BTC ni ETH
+                return nombreW === nombreMinusculas;
+            }
+            return false;
+        });
+
+        if (nombreDuplicado) {
             setNameTaken(true);
             valid = false;
         }
@@ -84,7 +112,8 @@ function CuentasAgregar() {
 
         if (wallets.length !== 0) {
             let walletsFiltradas = wallets.filter(
-                w => w.tipoMoneda === 'BTC' && w.tipoDireccion === selectedTipo);
+                w => w.tipoMoneda === 'BTC' && w.tipoDireccion === selectedTipo &&
+                w.red === redBtcSeleccionada);
 
             if (walletsFiltradas.length !== 0) {
                 let walletIndiceMasAlto = walletsFiltradas.reduce((max, actual) => {
@@ -96,7 +125,8 @@ function CuentasAgregar() {
         }
 
         try {
-            let resultado = await crearYGuardarWalletBtc(nombreWallet, mnemonic, ultimoIndex, selectedTipo, true);
+            let resultado = await crearYGuardarWalletBtc(nombreWallet, mnemonic, 
+                ultimoIndex, selectedTipo, redBtcSeleccionada);
             if (resultado) {
                 const allWallets = await getAllWallets();
                 setWallets(allWallets);
@@ -185,6 +215,7 @@ function CuentasAgregar() {
                                         setNombreWallet(e.target.value);
                                         setNameTaken(false);
                                         setNameEmpty(false);
+                                        setNameTooLong(false);
                                     }}
                                     className={`w-full bg-neutral-800 hover:bg-neutral-900 
                                     text-white font-semibold py-2 px-4 rounded-xl shadow-md 
@@ -202,6 +233,11 @@ function CuentasAgregar() {
                                 {nameTaken && (
                                     <h2 className="text-center mt-4 text-lg font-semibold text-red-500 select-none">
                                         El nombre introducido ya está en uso
+                                    </h2>
+                                )}
+                                {nameTooLong && (
+                                    <h2 className="text-center mt-4 text-lg font-semibold text-red-500 select-none">
+                                        El nombre no puede superar los 20 caracteres
                                     </h2>
                                 )}
                             </div>

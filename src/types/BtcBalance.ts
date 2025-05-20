@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js"; // Uso de BigNumber para evitar errores de cálculo (los números pueden ser demasiado grandes)
+import type { BIP32Interface } from 'bip32';
 
 export interface BtcTx {
   txid: string;
@@ -49,13 +50,21 @@ export interface ParsedBtcTx extends BtcTx {
   feeBtc: BigNumber;  // fee en BTC
 }
 
-export interface BtcTestResponse {
+export interface BtcUtxo {
   txid: string;
+  vout: number;
   status: {
     confirmed: boolean;
     block_time: number;
   };
   value: number;
+}
+
+export interface BtcAddressUtxo {
+  path: string;
+  address: string;
+  utxos: BtcUtxo[];
+  keyPair?: BIP32Interface;
 }
 
 export interface ParsedBtcResponse {

@@ -57,7 +57,7 @@ const SidebarMenu = () => {
         <div className="mt-auto">
             <SidebarButton 
                 icon={<Settings size={20} />} 
-                label="Configuración" 
+                label="Ajustes" 
                 to="/inicio/config" // Meramente informativo para saber a dónde redirige
                 active={location.pathname === "/inicio/config"}
                 onClick={() => handleLocation("/inicio/config")}  
@@ -78,7 +78,7 @@ const SidebarMenu = () => {
         { icon: React.ReactNode; label: string, to: string, active: boolean, onClick: () => void }) => (
     <button 
         onClick={onClick}
-        className={`flex items-center gap-3 px-4 py-2 rounded-xl transition-colors cursor-pointer 
+        className={`flex items-center gap-3 px-4 py-2 select-none rounded-xl transition-colors cursor-pointer 
         ${active ? "bg-neutral-600" : "hover:bg-neutral-600"}`}    
       >
         <div className={`${active ? "text-green-500" : "text-white"}`}>

@@ -10,5 +10,6 @@ export interface WalletInfo {
 
 export interface WalletStore {
   walletConfigured: boolean;
+  redBtcSeleccionada: 'mainnet' | 'testnet';
   wallets?: WalletInfo[];
 };

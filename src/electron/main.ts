@@ -8,7 +8,8 @@ import { WalletStore, WalletInfo } from './WalletInfo.js';
 
 const store = new Store<WalletStore>({
   defaults: {
-    walletConfigured: false
+    walletConfigured: false,
+    redBtcSeleccionada: 'mainnet'
   }
 });
 
@@ -275,6 +276,23 @@ app.on("ready", () => {
 
         return true;
     });
+
+    ipcMain.handle('wallet:getRedBtcSeleccionada', () => {
+        let redSeleccionada = store.get('redBtcSeleccionada');
+        if (redSeleccionada !== 'mainnet' && redSeleccionada !== 'testnet') {
+            redSeleccionada = 'mainnet';
+        }
+        return redSeleccionada;
+    });
+
+    ipcMain.handle('wallet:setRedBtcSeleccionada', (_event, isTestnet: boolean) => {
+        if (isTestnet) {
+            store.set('redBtcSeleccionada', 'testnet');
+        } else {
+            store.set('redBtcSeleccionada', 'mainnet');
+        }
+        return true;
+    })
 
     ipcMain.handle('wallet:savePassword', (_event, password: string) => {
         savePassword(password);
