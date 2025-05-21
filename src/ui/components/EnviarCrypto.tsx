@@ -12,6 +12,7 @@ import Spinner from "../components/Spinner";
 
 function EnviarCrypto() {
     const location = useLocation();
+    const navigate = useNavigate();
     const { wallets } = useWallets();
     const { password } = useAuth();
     const [wallet, setWallet] = useState<WalletInfo | undefined>(location.state?.wallet);
@@ -23,11 +24,23 @@ function EnviarCrypto() {
     const walletsETH = wallets.filter(w => w.tipoMoneda === "ETH");
 
     useEffect(() => {
+        if (!wallet) {
+            setWalletReceived(false);
+        } else {
+            setWalletReceived(true);
+        }
+    }, [wallet]);
+
+    useEffect(() => {
         const cargarRed = async () => setRedBtcSeleccionada(await getRedBtcSeleccionada());
         cargarRed();
     }, []);
 
     useEffect(() => {
+        if (!password) {
+            navigate("/");
+            return;
+        }
         let cancelado = false;
 
         const obtenerSaldos = async () => {
@@ -46,19 +59,10 @@ function EnviarCrypto() {
             }
         };
 
-        obtenerSaldos();
+        if (!walletReceived) obtenerSaldos();
 
         return () => { cancelado = true };
     }, [wallets, password, redBtcSeleccionada]);
-
-    useEffect(() => {
-        if (!wallet) {
-            setWalletReceived(false);
-        } else {
-            const saldo = saldos[wallet.nombre];
-            setWalletReceived(saldo?.isGreaterThan(0) ?? false);
-        }
-    }, [wallet, saldos]);
 
     const handleChooseWallet = (chosenWallet: WalletInfo) => {
         const saldo = saldos[chosenWallet.nombre];
@@ -89,6 +93,26 @@ function EnviarCrypto() {
                     <div className="flex items-center gap-3.5">
                         <img src={icon} alt={w.nombre} draggable="false" className="w-6.5 h-6.5" />
                         <span className="font-medium text-lg">{w.nombre}</span>
+                    {w.tipoDireccion === "native" && (
+                        <span className="text-green-500 text-xs border border-green-500 px-2 py-0.5 rounded-full font-medium">
+                        Native SegWit
+                        </span>
+                    )}
+                    {w.tipoDireccion === "segwit" && (
+                        <span className="text-yellow-400 text-xs border border-yellow-400 px-2 py-0.5 rounded-full font-medium">
+                        SegWit
+                        </span>
+                    )}
+                    {w.tipoDireccion === "legacy" && (
+                        <span className="text-red-400 text-xs border border-red-400 px-2 py-0.5 rounded-full font-medium">
+                        Legacy
+                        </span>
+                    )}
+                    {w.red === "testnet" && (
+                        <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
+                        testnet
+                        </span>
+                    )}
                     </div>
                     <span className="text-sm flex items-center gap-1">{saldoDisplay}</span>
                 </div>
@@ -104,8 +128,8 @@ function EnviarCrypto() {
                     <p className="text-sm text-gray-300 mb-2 text-center">Seleccione una cuenta con saldo para enviar fondos:</p>
 
                     {(walletsBTC.length + walletsETH.length === 0) ? (
-                        <h1 className="text-white bg-neutral-700 mb-2 rounded-xl px-6 py-4 flex text-xl">
-                        Todavía no hay cuentas creadas. Añada una para empezar.
+                        <h1 className="text-white bg-neutral-700 mb-2 rounded-xl px-6 py-4 flex text-center align-center justify-center text-xl">
+                        No se han encontrado cuentas. Cree una para enviar fondos.
                         </h1>
                     ) : (
                         <>
