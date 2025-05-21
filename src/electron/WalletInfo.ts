@@ -6,6 +6,8 @@ export interface WalletInfo {
     red?: 'mainnet' | 'testnet';
     indicePrivada: number,
     indicePublicaActual?: number;
+    ultSaldoGuardado: string;
+    ultSaldoGuardadoEur: number;
 }
 
 export interface WalletStore {

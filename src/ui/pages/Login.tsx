@@ -52,70 +52,80 @@ function Login() {
                 src={logoBitura} 
                 alt="Logo Bitura" 
                 draggable="false"
-                className="w-115 h-40" // Ajusta el tamaño según necesites
+                className="w-115 h-40"
             />
         </div>
 
-        <div className="flex flex-col items-center mt-5">
+        <form 
+        onSubmit={(e) => {
+            e.preventDefault();
+            handleVerifyLogin();
+        }}
+        className="flex flex-col items-center mt-5 w-full"
+        >
             {/* Contraseña */}
             <h2 className="text-xl font-bold text-white text-center">
                 Introduzca su contraseña
             </h2>
-            <div className="relative mt-3 w-full max-w-xs">
+            <div className="relative mt-3 w-full max-w-[300px]">
                 <input
-                    type={showPassword ? "text" : "password"}
-                    value={password || ""}
-                    disabled={loginSuccessful}
-                    onChange={(e) => {
-                        setPassword(e.target.value);
-                        setLoginSuccessful(undefined);
-                    }}
-                    className={`w-full gap-2 bg-neutral-800 hover:bg-neutral-900 
-                    text-white font-semibold py-1 px-6 rounded-xl shadow-md 
-                    transition duration-300
-                        ${(loginSuccessful)
-                            ? "border-green-500 border-2"
-                            : "border-gray-500 border"
-                        }`}
+                type={showPassword ? "text" : "password"}
+                value={password || ""}
+                disabled={loginSuccessful}
+                onChange={(e) => {
+                    setPassword(e.target.value);
+                    setLoginSuccessful(undefined);
+                }}
+                className={`w-full gap-2 bg-neutral-800 hover:bg-neutral-900 
+                text-white font-semibold py-1 px-6 rounded-xl shadow-md 
+                transition duration-300
+                    ${(loginSuccessful)
+                        ? "border-green-500 border-2"
+                        : "border-gray-500 border"
+                    }`}
                 />
                 <button 
-                    className="absolute inset-y-0 right-2 flex items-center 
-                    justify-center text-gray-300 hover:text-white cursor-pointer"
-                    onClick={() => setShowPassword(!showPassword)}
+                type="button"
+                className="absolute inset-y-0 right-2 flex items-center 
+                justify-center text-gray-300 hover:text-white cursor-pointer"
+                onClick={() => setShowPassword(!showPassword)}
                 >
-                    {showPassword ? <EyeOff/> : <Eye/>}
+                {showPassword ? <EyeOff/> : <Eye/>}
                 </button>
             </div>
-        </div>
-        {/* Botones */}
-        <div className="mt-5 flex gap-6">
-            {/* Botón Salir */}
-            <button
+
+            {/* Botones */}
+            <div className="mt-5 flex gap-6">
+                {/* Botón Salir */}
+                <button
+                type="button"
                 onClick={handleCloseApp}
                 disabled={loginSuccessful}
                 className={`px-4 py-2 rounded-xl shadow-md border select-none flex items-center gap-2 transition duration-300
                     ${(loginSuccessful) 
                         ? "bg-neutral-600 text-gray-300 cursor-not-allowed border-gray-400" 
-                        : "border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"}`
+                        : "border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"}` 
                 }
-            >
+                >
                 <LogOut className="w-5 h-5"/>
                 Salir
-            </button>
-            {/* Botón Entrar */}
-            <button
-                onClick={handleVerifyLogin}
+                </button>
+
+                {/* Botón Entrar */}
+                <button
+                type="submit"
                 disabled={loginSuccessful || !password}
                 className={`px-4 py-2 rounded-xl shadow-md border select-none flex items-center gap-2 transition duration-300
                     ${(loginSuccessful || !password) 
                         ? "bg-neutral-600 text-gray-300 cursor-not-allowed border-gray-400" 
-                        : "border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"}`
+                        : "border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"}` 
                 }
-            >
+                >
                 <LogIn className="w-5 h-5"/>
                 Entrar
-            </button>
-        </div>
+                </button>
+            </div>
+        </form>
         {/* Info. estado contraseñas introducidas */}
         {loginSuccessful === false && (
             <h2 className="text-center mt-4 text-lg font-semibold text-red-500">

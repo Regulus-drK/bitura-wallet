@@ -9,6 +9,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
 import { getMnemonic, getRedBtcSeleccionada } from "../../services/apiService";
 import { enviarBtc, verificarFondosDireccionesBtc } from "../../services/walletService";
+import Spinner from "../components/Spinner";
 
 function Cuentas() {
     const { password } = useAuth();
@@ -29,12 +30,18 @@ function Cuentas() {
             navigate("/");
             return;
         }
+
+        let isCancelled = false;
+
         const obtenerSaldoBtc = async () => {
 
             const mnemonic = await getMnemonic(password);
             
             for (const wallet of wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redBtcSeleccionada)) {
                 const fondosBtc = await verificarFondosDireccionesBtc(mnemonic, wallet, redBtcSeleccionada);
+
+                if (isCancelled) return;
+
                 if (fondosBtc) {
                     setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosBtc.totalBtc }));
                     // const enviarTest = await enviarBtc(
@@ -50,6 +57,10 @@ function Cuentas() {
             }
         }
         obtenerSaldoBtc();
+
+        return () => {
+            isCancelled = true;
+        };
     }, [wallets, password, redBtcSeleccionada]);
 
 
@@ -104,9 +115,17 @@ function Cuentas() {
                             </span>
                             }
                         </div>
-                        <span className="text-sm text-gray-300">
-                            Saldo: {saldos[wallet.nombre] ? saldos[wallet.nombre].toFixed(5) + " BTC" : "Cargando..."}
-                        </span>
+                            <span className="text-sm text-gray-300 flex items-center gap-1">
+                            {saldos[wallet.nombre] == null
+                                ? (
+                                <>
+                                    <Spinner small size={16}/>
+                                    <span>{wallet.ultSaldoGuardado} BTC</span>
+                                </>
+                                )
+                                : <span>{saldos[wallet.nombre].toFixed(6)} BTC</span>
+                            }
+                            </span>
                         </div>
                     </li>
                     ))}
@@ -128,7 +147,7 @@ function Cuentas() {
                             <img src={ethIcon} alt={wallet.nombre} draggable="false" className="w-6.5 h-6.5" />
                             <span className="font-medium text-lg">{wallet.nombre}</span>
                         </div>
-                        <span className="text-sm text-gray-300">Saldo: 0.00000000 ETH</span>
+                        <span className="text-sm text-gray-300">0.000000 ETH</span>
                         </div>
                     </li>
                     ))}

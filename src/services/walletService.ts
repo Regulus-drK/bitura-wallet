@@ -155,7 +155,9 @@ export async function crearYGuardarWalletBtc(
         red: redSeleccionada,
         indicePrivada: index,
         indicePublicaActual: 0,
-        direccionPublica: walletBtc.address
+        direccionPublica: walletBtc.address,
+        ultSaldoGuardado: '0.000000',
+        ultSaldoGuardadoEur: 0
     };
 
     const resultado = await addWallet(walletInfo);
@@ -608,7 +610,9 @@ export async function crearYGuardarWalletEth(nombre: string, mnemonic: string | 
         nombre: nombre,
         pathBase: walletEth.path,
         indicePrivada: indexPrivada,
-        direccionPublica: walletEth.address
+        direccionPublica: walletEth.address,
+        ultSaldoGuardado: '0.000000',
+        ultSaldoGuardadoEur: 0
     };
 
     const resultado = await addWallet(walletInfo);

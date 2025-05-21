@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Outlet } from "react-router-dom";
 import { enableMenu } from '../../services/apiService';
 import { walletShouldBeConfigured } from '../../hooks/walletShouldBeConfigured';
 import { useWindowSize } from '../../hooks/useWindowSize';
 // import { useAuth } from '../../context/AuthContext';
 import SidebarMenu from '../components/SidebarMenu';
+import Spinner from '../components/Spinner';
 // import { crearYGuardarWalletBtc } from '../../services/walletService';
 // import { useWallets } from '../../context/WalletContext';
 
@@ -33,7 +34,9 @@ function Inicio() {
       <SidebarMenu />
 
       <main className="ml-60 flex-1 p-6 text-center">
-        <Outlet/>
+        <Suspense fallback={<Spinner />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

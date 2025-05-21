@@ -41,16 +41,16 @@ const SidebarMenu = () => {
             <SidebarButton 
                 icon={<ArrowUp size={20}/>} 
                 label="Enviar" 
-                to="/inicio" // Meramente informativo para saber a dónde redirige
-                active={location.pathname === "/enviar"}
-                onClick={() => handleLocation("/inicio")} 
+                to="/inicio/enviar" // Meramente informativo para saber a dónde redirige
+                active={location.pathname === "/inicio/enviar"}
+                onClick={() => handleLocation("/inicio/enviar")} 
             />            
             <SidebarButton 
                 icon={<ArrowDown size={20}/>} 
                 label="Recibir" 
-                to="/inicio" // Meramente informativo para saber a dónde redirige
-                active={location.pathname === "/recibir"}
-                onClick={() => handleLocation("/inicio")} 
+                to="/inicio/recibir" // Meramente informativo para saber a dónde redirige
+                active={location.pathname === "/inicio/recibir"}
+                onClick={() => handleLocation("/inicio/recibir")} 
             />
         </nav>
 
