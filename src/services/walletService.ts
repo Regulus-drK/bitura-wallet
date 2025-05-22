@@ -230,127 +230,122 @@ export async function verificarFondosDireccionesBtc(
   wallet: WalletInfo,
   redSeleccionada: 'mainnet' | 'testnet'
 ) {
-    if (!mnemonic || !validarMnemonic(mnemonic)) {
-        console.error("Mnemonic inválido.");
-        return;
+  if (!mnemonic || !validarMnemonic(mnemonic)) {
+    console.error("Mnemonic inválido.");
+    return;
+  }
+
+  const testnet = redSeleccionada === 'testnet';
+  const SATOSHIS_IN_BTC = new BigNumber(1e8);
+  const binSeed = bip39.mnemonicToSeedSync(mnemonic);
+  const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+  const apiBase = testnet ? "https://mempool.space/testnet/api" : "https://mempool.space/api";
+  const root = bip32.fromSeed(binSeed, network);
+  const pathBase = wallet.pathBase.replace(/\/[0-1]\/\d+$/, '');
+
+  const metodoBtc = (() => {
+    switch (wallet.tipoDireccion) {
+      case 'legacy': return bitcoin.payments.p2pkh;
+      case 'segwit':
+        return (args: bitcoin.payments.Payment) =>
+          bitcoin.payments.p2sh({
+            redeem: bitcoin.payments.p2wpkh(args),
+            network: args.network,
+          });
+      case 'native':
+      default: return bitcoin.payments.p2wpkh;
     }
+  })();
 
-    let testnet = false;
-    if (redSeleccionada === 'testnet') testnet = true;
+  const direccionesConFondos: BtcAddressUtxo[] = [];
+  let totalConfirmed = new BigNumber(0);
+  let totalUnconfirmed = new BigNumber(0);
 
-    const SATOSHIS_IN_BTC = new BigNumber(1e8);
-    const binSeed = bip39.mnemonicToSeedSync(mnemonic);
-    const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
-    const apiBase = testnet ? "https://mempool.space/testnet/api" : "https://mempool.space/api";
-    const root = bip32.fromSeed(binSeed, network);
-    const pathBase = wallet.pathBase.replace(/\/[0-1]\/\d+$/, '');
+  const escanear = async (cambio: number) => {
+    let index = 0;
+    let vaciasConsecutivas = 0;
+    const BATCH_SIZE = 20;
 
-    const metodoBtc = (() => {
-        switch (wallet.tipoDireccion) {
-            case 'legacy':
-                return bitcoin.payments.p2pkh;
-            case 'segwit':
-                return (args: bitcoin.payments.Payment) =>
-                bitcoin.payments.p2sh({
-                    redeem: bitcoin.payments.p2wpkh(args),
-                    network: args.network,
-                });
-            case 'native':
-            default:
-                return bitcoin.payments.p2wpkh;
+    while (vaciasConsecutivas < 20) {
+      const batch: { path: string; address: string; keyPair: BIP32Interface }[] = [];
+
+      for (let i = 0; i < BATCH_SIZE; i++) {
+        const fullPath = `${pathBase}/${cambio}/${index + i}`;
+        const child = root.derivePath(fullPath);
+        const { address } = metodoBtc({ pubkey: Buffer.from(child.publicKey), network });
+
+        if (address) {
+          batch.push({ path: fullPath, address, keyPair: child });
         }
-    })();
+      }
 
-    const direcciones: { path: string; address: string; keyPair: BIP32Interface }[] = [];
-
-    // Derivar 20 externas y 20 de cambio (como en tu versión funcional)
-    for (let cambio = 0; cambio <= 1; cambio++) {
-        for (let index = 0; index < 20; index++) {
-            const fullPath = `${pathBase}/${cambio}/${index}`;
-            const child = root.derivePath(fullPath);
-            const { address } = metodoBtc({
-                pubkey: Buffer.from(child.publicKey),
-                network,
-            });
-
-            if (address) {
-                direcciones.push({ path: fullPath, address, keyPair: child });
-            }
-        }
-    }
-
-    // Consulta de UTXOs
-    const respuestas = await Promise.allSettled(
-        direcciones.map(dir =>
-        fetch(`${apiBase}/address/${dir.address}/utxo`)
+      const respuestas = await Promise.allSettled(
+        batch.map(dir =>
+          fetch(`${apiBase}/address/${dir.address}/utxo`)
             .then(r => r.json())
-            .then((utxos) => ({ path: dir.path, address: dir.address, utxos, keyPair: dir.keyPair }))
+            .then((utxos) => ({ ...dir, utxos }))
         )
-    );
+      );
 
-    let totalConfirmed = new BigNumber(0);
-    let totalUnconfirmed = new BigNumber(0);
-    const direccionesConFondos: BtcAddressUtxo[] = [];
-
-    for (const respuesta of respuestas) {
+      for (const respuesta of respuestas) {
         if (respuesta.status === "fulfilled") {
-            const { path, address, utxos, keyPair } = respuesta.value;
-            let confirmados = new BigNumber(0);
-            let noConfirmados = new BigNumber(0);
+          const { path, address, utxos, keyPair } = respuesta.value;
+          let confirmados = new BigNumber(0);
+          let noConfirmados = new BigNumber(0);
 
-        for (const utxo of utxos) {
-            if (utxo.status.confirmed) {
-                confirmados = confirmados.plus(utxo.value);
-            } else {
-                noConfirmados = noConfirmados.plus(utxo.value);
-            }
-        }
+          for (const utxo of utxos) {
+            if (utxo.status.confirmed) confirmados = confirmados.plus(utxo.value);
+            else noConfirmados = noConfirmados.plus(utxo.value);
+          }
 
-        const total = confirmados.plus(noConfirmados);
-        if (total.isGreaterThan(0)) {
+          const total = confirmados.plus(noConfirmados);
+          if (total.isGreaterThan(0)) {
+            vaciasConsecutivas = 0;
             direccionesConFondos.push({ path, address, utxos, keyPair });
+            totalConfirmed = totalConfirmed.plus(confirmados);
+            totalUnconfirmed = totalUnconfirmed.plus(noConfirmados);
             console.log(`✔ Fondos en ${address} (${path})`);
-            console.log(`  Confirmados: ${confirmados.div(SATOSHIS_IN_BTC).toFixed()} BTC`);
-            console.log(`  No confirmados: ${noConfirmados.div(SATOSHIS_IN_BTC).toFixed()} BTC`);
+          } else {
+            vaciasConsecutivas++;
+          }
+        } else {
+          vaciasConsecutivas++;
         }
+      }
 
-        totalConfirmed = totalConfirmed.plus(confirmados);
-        totalUnconfirmed = totalUnconfirmed.plus(noConfirmados);
-        }
+      index += BATCH_SIZE;
     }
+  };
 
-    // Busca dirección de cambio con fondos para la hora de enviar BTC
-    let cambioConFondos = direccionesConFondos.find(d => d.path.includes('/1/'));
+  // Escanear direcciones externas y de cambio
+  await escanear(0);
+  await escanear(1);
 
-    // Si no hay cambio con fondos, añade la primera dirección de cambio derivada (aunque sin fondos)
-    if (!cambioConFondos) {
-        const primeraDireccionCambio = direcciones.find(d => d.path.includes('/1/'));
-        if (primeraDireccionCambio) {
-        // Insertamos la dirección de cambio aunque no tenga fondos, con utxos vacíos
-        cambioConFondos = { 
-            path: primeraDireccionCambio.path, 
-            address: primeraDireccionCambio.address, 
-            utxos: [], 
-            keyPair: primeraDireccionCambio.keyPair 
-        };
-        direccionesConFondos.push(cambioConFondos);
-        }
+  // Añadir dirección de cambio aunque no tenga fondos si no se detectó ninguna
+  let cambioConFondos = direccionesConFondos.find(d => d.path.includes('/1/'));
+  if (!cambioConFondos) {
+    const child = root.derivePath(`${pathBase}/1/0`);
+    const { address } = metodoBtc({ pubkey: Buffer.from(child.publicKey), network });
+    if (address) {
+      cambioConFondos = { path: `${pathBase}/1/0`, address, utxos: [], keyPair: child };
+      direccionesConFondos.push(cambioConFondos);
     }
+  }
 
-    const totalBtc = totalConfirmed.plus(totalUnconfirmed).div(SATOSHIS_IN_BTC);
+  const totalBtc = totalConfirmed.plus(totalUnconfirmed).div(SATOSHIS_IN_BTC);
+  console.log(`\nResumen total cuenta ${wallet.nombre}:`);
+  console.log(`✔ Confirmado: ${totalConfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
+  console.log(`✔ No confirmado: ${totalUnconfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
+  console.log(`✔ Total: ${totalBtc.toFixed(8)} BTC`);
 
-    console.log(`\nResumen total:`);
-    console.log(`✔ Confirmado: ${totalConfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
-    console.log(`✔ No confirmado: ${totalUnconfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
-    console.log(`✔ Total: ${totalBtc.toFixed(8)} BTC`);
-
-    return {
-        totalConfirmed,
-        totalUnconfirmed,
-        totalBtc,
-        direccionesConFondos, // Para usar en envío
-    };
+  return {
+    totalConfirmed,
+    totalUnconfirmed,
+    totalBtc,
+    direccionesConFondos,
+  };
 }
+
 
 export function esDireccionBtcValida(address: string, redSeleccionada: 'mainnet' | 'testnet'): boolean {
     let testnet = false;

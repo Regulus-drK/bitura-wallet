@@ -16,7 +16,7 @@ function Cuentas() {
     const { wallets, setWallets } = useWallets();
     const [saldos, setSaldos] = useState<Record<string, BigNumber>>({});
     const navigate = useNavigate();
-    const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet'>('mainnet');
+    const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
 
     useEffect(() => {
         const detectarRedBtcSeleccionada = async () => {
@@ -30,13 +30,14 @@ function Cuentas() {
             navigate("/");
             return;
         }
+        if (!redBtcSeleccionada) return;
 
         let isCancelled = false;
 
         const obtenerSaldoBtc = async () => {
 
             const mnemonic = await getMnemonic(password);
-            
+            console.log(wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redBtcSeleccionada))
             for (const wallet of wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redBtcSeleccionada)) {
                 const fondosBtc = await verificarFondosDireccionesBtc(mnemonic, wallet, redBtcSeleccionada);
 

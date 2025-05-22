@@ -20,7 +20,7 @@ function EnviarCrypto() {
     const [wallet, setWallet] = useState<WalletInfo | undefined>(location.state?.wallet);
     const [walletReceived, setWalletReceived] = useState<boolean>(false);
     const [saldos, setSaldos] = useState<Record<string, BigNumber | null>>({});
-    const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet'>('mainnet');
+    const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
     const [receiptAddress, setReceiptAddress] = useState<string>("");
     const [isValidAddress, setIsValidAddress] = useState<boolean | null>(null);
     const [isSameAddress, setIsSameAddress] = useState<boolean>(false);
@@ -70,6 +70,8 @@ function EnviarCrypto() {
             navigate("/");
             return;
         }
+
+        if (!redBtcSeleccionada) return;
         let cancelado = false;
 
         const obtenerSaldos = async () => {
@@ -126,7 +128,7 @@ function EnviarCrypto() {
             return;
         }
         if (wallet?.tipoMoneda === "BTC") {
-            const valido = esDireccionBtcValida(receiptAddress, redBtcSeleccionada);
+            const valido = esDireccionBtcValida(receiptAddress, redBtcSeleccionada!);
             if (!valido) {
                 setIsValidAddress(false);
                 return;
@@ -154,7 +156,7 @@ function EnviarCrypto() {
 
         if (wallet.tipoMoneda === 'BTC') {
             try {
-                const result = await verificarFondosDireccionesBtc(mnemonic, wallet, redBtcSeleccionada);
+                const result = await verificarFondosDireccionesBtc(mnemonic, wallet, redBtcSeleccionada!);
                 if (result) {
                     setSaldos(prev => ({ ...prev, [wallet.nombre]: result ? result.totalBtc : null }));
                     setFondosBTC(result.direccionesConFondos);
@@ -238,7 +240,7 @@ function EnviarCrypto() {
         if (wallet?.tipoMoneda === 'BTC') {
             try {
                 const txBtc = await enviarBtc(
-                    fondosBTC!, receiptAddress, Number(cantidadAenviar), redBtcSeleccionada, BigNumber(Number(comision)));
+                    fondosBTC!, receiptAddress, Number(cantidadAenviar), redBtcSeleccionada!, BigNumber(Number(comision)));
                 if (txBtc) {
                     setTxInfo(txBtc);
                     console.log(`Éxito, Input: ${txBtc.totalInput}\nOutput: ${txBtc.totalOutput}\nFee: ${txBtc.fee}\nTxid: ${txBtc.txid}\nRawTx: ${txBtc.rawTx}`)
