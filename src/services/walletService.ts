@@ -391,7 +391,7 @@ export function esDireccionEthValida(address: string): boolean {
     return ethers.isAddress(address);
 }
 
-// FUNCIONA.
+// Función para poder enviar Bitcoin
 export async function enviarBtc(
   direccionesConFondos: BtcAddressUtxo[],
   destino: string,
@@ -399,76 +399,106 @@ export async function enviarBtc(
   redSeleccionada: 'mainnet' | 'testnet',
   feeSat: BigNumber = new BigNumber(500) // fee por defecto
 ) {
-  const SATOSHIS_IN_BTC = new BigNumber(1e8);
-  const cantidadSatoshis = new BigNumber(cantidadBtc).multipliedBy(SATOSHIS_IN_BTC);
+    const SATOSHIS_IN_BTC = new BigNumber(1e8);
+    const cantidadSatoshis = new BigNumber(cantidadBtc).multipliedBy(SATOSHIS_IN_BTC);
 
-  let totalSeleccionado = new BigNumber(0);
-  const utxos: { txid: string; address: string; vout: number; value: number; keyPair: BIP32Interface }[] = [];
+    let totalSeleccionado = new BigNumber(0);
+    const utxos: { txid: string; address: string; vout: number; value: number; keyPair: BIP32Interface }[] = [];
 
-  let testnet = false;
-  if (redSeleccionada === 'testnet') testnet = true;
+    let testnet = false;
+    if (redSeleccionada === 'testnet') testnet = true;
 
-  // Recolectar UTXOs confirmados hasta alcanzar la cantidad requerida + fee
-  for (const entrada of direccionesConFondos) {
-    for (const utxo of entrada.utxos) {
-      utxos.push({
-        txid: utxo.txid,
-        address: entrada.address,
-        vout: utxo.vout,
-        value: utxo.value,
-        keyPair: entrada.keyPair!,
-      });
-      totalSeleccionado = totalSeleccionado.plus(utxo.value);
+    // Recolectar UTXOs confirmados hasta alcanzar la cantidad requerida + fee
+    for (const entrada of direccionesConFondos) {
+        for (const utxo of entrada.utxos) {
+        utxos.push({
+            txid: utxo.txid,
+            address: entrada.address,
+            vout: utxo.vout,
+            value: utxo.value,
+            keyPair: entrada.keyPair!,
+        });
+        totalSeleccionado = totalSeleccionado.plus(utxo.value);
 
-      if (totalSeleccionado.isGreaterThanOrEqualTo(cantidadSatoshis.plus(feeSat))) {
+        if (totalSeleccionado.isGreaterThanOrEqualTo(cantidadSatoshis.plus(feeSat))) {
+            break;
+        }
+        }
+
+        if (totalSeleccionado.isGreaterThanOrEqualTo(cantidadSatoshis.plus(feeSat))) {
         break;
-      }
+        }
     }
 
-    if (totalSeleccionado.isGreaterThanOrEqualTo(cantidadSatoshis.plus(feeSat))) {
-      break;
+    if (totalSeleccionado.isLessThan(cantidadSatoshis.plus(feeSat))) {
+        throw new Error('Fondos insuficientes.');
     }
-  }
 
-  if (totalSeleccionado.isLessThan(cantidadSatoshis.plus(feeSat))) {
-    throw new Error('Fondos insuficientes.');
-  }
+    const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
 
-  const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+    const psbt = new bitcoin.Psbt({ network });
 
-  const metodoBtc = (() => {
-    const tipo = direccionesConFondos[0]?.address?.startsWith('1')
-      ? 'legacy'
-      : direccionesConFondos[0]?.address?.startsWith('3')
-      ? 'segwit'
-      : 'native';
+    for (const utxo of utxos) {
+    const pubkey = Buffer.from(utxo.keyPair.publicKey);
 
+    const tipo = (() => {
+        const prefix = utxo.address[0];
+        if (prefix === '1' || prefix === 'm' || prefix === 'n') return 'legacy';      // P2PKH
+        if (prefix === '3' || prefix === '2') return 'segwit';                        // P2SH-SegWit
+        if (utxo.address.startsWith('bc1') || utxo.address.startsWith('tb1')) return 'native'; // P2WPKH
+        throw new Error(`Tipo de dirección desconocido: ${utxo.address}`);
+    })();
+
+    let payment;
     switch (tipo) {
-      case 'legacy':
-        return bitcoin.payments.p2pkh;
-      case 'segwit':
-        return (args: bitcoin.payments.Payment) =>
-          bitcoin.payments.p2sh({
-            redeem: bitcoin.payments.p2wpkh(args),
-            network: args.network,
-          });
-      default:
-        return bitcoin.payments.p2wpkh;
+        case 'legacy':
+        payment = bitcoin.payments.p2pkh({ pubkey, network });
+        break;
+        case 'segwit':
+        payment = bitcoin.payments.p2sh({
+            redeem: bitcoin.payments.p2wpkh({ pubkey, network }),
+            network,
+        });
+        break;
+        case 'native':
+        payment = bitcoin.payments.p2wpkh({ pubkey, network });
+        break;
+        default:
+        throw new Error(`Tipo de dirección no soportado para ${utxo.address}`);
     }
-  })();
 
-  const psbt = new bitcoin.Psbt({ network });
+    if (tipo === 'legacy') {
+        const rawTx = await fetchRawTransaction(utxo.txid, testnet);
+        psbt.addInput({
+        hash: utxo.txid,
+        index: utxo.vout,
+        nonWitnessUtxo: Buffer.from(rawTx, 'hex'),
+        });
+    } else {
+    const input: {
+        hash: string;
+        index: number;
+        witnessUtxo: {
+            script: Buffer;
+            value: number;
+        };
+        redeemScript?: Buffer;
+        } = {
+        hash: utxo.txid,
+        index: utxo.vout,
+        witnessUtxo: {
+            script: payment.output!,
+            value: utxo.value,
+        },
+    };
 
-  for (const utxo of utxos) {
-    psbt.addInput({
-      hash: utxo.txid,
-      index: utxo.vout,
-      witnessUtxo: {
-        script: metodoBtc({ pubkey: Buffer.from(utxo.keyPair.publicKey), network }).output!,
-        value: utxo.value,
-      },
-    });
-  }
+        if (tipo === 'segwit') {
+        input.redeemScript = bitcoin.payments.p2wpkh({ pubkey, network }).output!;
+        }
+
+        psbt.addInput(input);
+    }
+    }
 
   psbt.addOutput({
     address: destino,
@@ -486,6 +516,20 @@ export async function enviarBtc(
       value: cambioRestante.toNumber(),
     });
   }
+
+  // Realizar transacción en Legacy
+  async function fetchRawTransaction(txid: string, testnet: boolean): Promise<string> {
+        const url = testnet
+            ? `https://mempool.space/testnet/api/tx/${txid}/hex`
+            : `https://mempool.space/api/tx/${txid}/hex`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`No se pudo obtener rawTx de ${txid}: ${await response.text()}`);
+        }
+
+        return await response.text();
+    }
 
     // Firmar inputs
     utxos.forEach((utxo, i) => {
