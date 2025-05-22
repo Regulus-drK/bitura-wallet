@@ -72,6 +72,7 @@ function EnviarCrypto() {
         }
 
         if (!redBtcSeleccionada) return;
+
         let cancelado = false;
 
         const obtenerSaldos = async () => {
@@ -105,7 +106,7 @@ function EnviarCrypto() {
             }
         };
 
-        obtenerSaldos();
+        if (!wallet) obtenerSaldos();
 
         return () => { cancelado = true };
     }, [password, redBtcSeleccionada]);
@@ -409,7 +410,8 @@ function EnviarCrypto() {
                                 )}
                             </div>
                             <p className="text-md font-medium text-gray-300">
-                                Saldo: {saldos[wallet!.nombre]?.toFixed(7)} {wallet?.tipoMoneda} ≈ {(saldos[wallet!.nombre]?.multipliedBy(precioActCrypto).toFixed(2))} €
+                                Saldo: {saldos[wallet!.nombre] ? saldos[wallet!.nombre]?.toFixed(7) : wallet?.ultSaldoGuardado} {wallet?.tipoMoneda} {' '}
+                                ≈ {saldos[wallet!.nombre] ? (saldos[wallet!.nombre]?.multipliedBy(precioActCrypto).toFixed(2)) : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
                             </p>
                         </div>
 

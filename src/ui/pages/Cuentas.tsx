@@ -37,7 +37,7 @@ function Cuentas() {
         const obtenerSaldoBtc = async () => {
 
             const mnemonic = await getMnemonic(password);
-            console.log(wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redBtcSeleccionada))
+            
             for (const wallet of wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redBtcSeleccionada)) {
                 const fondosBtc = await verificarFondosDireccionesBtc(mnemonic, wallet, redBtcSeleccionada);
 
