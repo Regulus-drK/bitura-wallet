@@ -7,13 +7,13 @@ import ethIcon from "../../assets/crypto/ether.png";
 import BigNumber from "bignumber.js";
 import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
-import { getMnemonic, getRedBtcSeleccionada } from "../../services/apiService";
-import { enviarBtc, verificarFondosDireccionesBtc } from "../../services/walletService";
+import { getAllWallets, getMnemonic, getRedBtcSeleccionada, updateWallet } from "../../services/apiService";
+import { verificarFondosDireccionesBtc } from "../../services/walletService";
 import Spinner from "../components/Spinner";
 
 function Cuentas() {
     const { password } = useAuth();
-    const { wallets } = useWallets();
+    const { wallets, setWallets } = useWallets();
     const [saldos, setSaldos] = useState<Record<string, BigNumber>>({});
     const navigate = useNavigate();
     const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet'>('mainnet');
@@ -44,13 +44,16 @@ function Cuentas() {
 
                 if (fondosBtc) {
                     setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosBtc.totalBtc }));
-                    // const enviarTest = await enviarBtc(
-                    //     fondosBtc.direccionesConFondos, "2MuYNBdQWLmsxfXsMFgQPV3su6YmnXJNCcr", 0.00003, redBtcSeleccionada, BigNumber(300));
-                    // if (enviarTest) {
-                    //     console.log(`Éxito, Input: ${enviarTest.totalInput}\nOutput: ${enviarTest.totalOutput}\nFee: ${enviarTest.fee}\nTxid: ${enviarTest.txid}\nRawTx: ${enviarTest.rawTx}`)
-                    // } else {
-                    //     console.error('Fallo al enviar BTC.')
-                    // }
+                    wallet.ultSaldoGuardado = fondosBtc.totalBtc.toFixed(6);
+
+                    const walletActualizada = await updateWallet(wallet.nombre, wallet);
+
+                    if (walletActualizada) {
+                        const allWallets = await getAllWallets();
+                        setWallets(allWallets);
+                    } else {
+                        console.error('Error al actualizar la wallet en localStorage.');
+                    }
                 } else {
                     console.error("Error al obtener los saldos de BTC");
                 }
@@ -61,7 +64,7 @@ function Cuentas() {
         return () => {
             isCancelled = true;
         };
-    }, [wallets, password, redBtcSeleccionada]);
+    }, [password, redBtcSeleccionada]);
 
 
     const handleClickWallet = (wallet: WalletInfo) => {

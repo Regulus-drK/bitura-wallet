@@ -31,6 +31,36 @@ function getMacAppMenu(): Electron.MenuItemConstructorOptions | null {
   };
 }
 
+// Menú Editar para macOS
+function getEditMenu(): Electron.MenuItemConstructorOptions {
+  if (process.platform === 'darwin') {
+    return {
+      label: 'Editar',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'pasteAndMatchStyle' },
+        { role: 'delete' },
+        { role: 'selectAll' }
+      ]
+    };
+  } else {
+    return {
+      label: 'Test',
+      submenu: [
+        {
+          label: 'Random',
+          click: () => null
+        }
+      ]
+    };
+  }
+}
+
 // Menú principal con todo
 const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     {
@@ -65,15 +95,7 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
             },
         ],
     },
-    {
-        label: 'Test',
-        submenu: [
-            {
-                label: 'Random',
-                click: () => null
-            }
-        ]
-    }
+    getEditMenu()
 ];
 
 // Si estamos en macOS, añadimos el menú de la app al principio

@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
 import type { WalletInfo } from "../../types/WalletInfo";
 import BigNumber from "bignumber.js";
-import { getMnemonic, getRedBtcSeleccionada, listarPrecios } from "../../services/apiService";
+import { getAllWallets, getMnemonic, getRedBtcSeleccionada, listarPrecios, updateWallet } from "../../services/apiService";
 import { enviarBtc, esDireccionBtcValida, esDireccionEthValida, verificarFondosDireccionesBtc } from "../../services/walletService";
 import btcIcon from "../../assets/crypto/bitcoin.png";
 import ethIcon from "../../assets/crypto/ether.png";
@@ -15,7 +15,7 @@ import type { BtcAddressUtxo } from "../../types/BtcBalance";
 function EnviarCrypto() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { wallets } = useWallets();
+    const { wallets, setWallets } = useWallets();
     const { password } = useAuth();
     const [wallet, setWallet] = useState<WalletInfo | undefined>(location.state?.wallet);
     const [walletReceived, setWalletReceived] = useState<boolean>(false);
@@ -44,6 +44,7 @@ function EnviarCrypto() {
         totalOutput: 0,
         fee: new BigNumber(0)
     });
+    const [txError, setTxError] = useState<string>("");
 
     //TODO: Gestionar el mostrar error en Tx
 
@@ -78,7 +79,22 @@ function EnviarCrypto() {
             for (const w of walletsBTC) {
                 const result = await verificarFondosDireccionesBtc(mnemonic, w, redBtcSeleccionada);
                 if (cancelado) return;
-                setSaldos(prev => ({ ...prev, [w.nombre]: result ? result.totalBtc : null }));
+
+                if (result) {
+                    setSaldos(prev => ({ ...prev, [w.nombre]: result ? result.totalBtc : null }));
+                    w.ultSaldoGuardado = result.totalBtc.toFixed(6);
+            
+                    const walletActualizada = await updateWallet(w.nombre, w);
+
+                    if (walletActualizada) {
+                        const allWallets = await getAllWallets();
+                        setWallets(allWallets);
+                    } else {
+                        console.error('Error al actualizar la wallet en localStorage.');
+                    }
+                } else {
+                    console.error('Error cargando los saldos de ', w.nombre)
+                }
             }
 
             for (const w of walletsETH) {
@@ -90,7 +106,7 @@ function EnviarCrypto() {
         obtenerSaldos();
 
         return () => { cancelado = true };
-    }, [wallets, password, redBtcSeleccionada]);
+    }, [password, redBtcSeleccionada]);
 
     // Efecto para calcular las conversiones cuando se modifique el valor de la variable
     useEffect(() => {
@@ -232,7 +248,9 @@ function EnviarCrypto() {
                     setIsTransactionSuccessful(false);
                 }
             } catch (err) {
-                console.error('Error al realizar la transacción: ', err);
+                const mensaje = err instanceof Error ? err.message : String(err);
+                console.error('Error al realizar la transacción: ', mensaje);
+                setTxError(mensaje);
                 setIsTransactionSuccessful(false);
             }
         }
@@ -630,7 +648,10 @@ function EnviarCrypto() {
                         <h1 className="text-3xl">No se ha podido realizar la transferencia.</h1>
                     </div>
                     <div className="text-white text-lg">
-                        <h1>Por favor, vuelva a intentarlo más tarde.</h1>
+                        <h1>{txError}</h1>
+                    </div>
+                    <div className="text-white text-lg">
+                        <h1>Por favor, vuelva a intentarlo.</h1>
                     </div>
                     {/* Botón Home */}
                     <div className="mt-5 flex flex-col items-center text-center">
