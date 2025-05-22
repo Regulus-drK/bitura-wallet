@@ -352,28 +352,43 @@ export async function verificarFondosDireccionesBtc(
     };
 }
 
-export function esDireccionValida(address: string, tipo: 'legacy' | 'segwit' | 'native', testnet: boolean = false): boolean {
+export function esDireccionBtcValida(address: string, redSeleccionada: 'mainnet' | 'testnet'): boolean {
+    let testnet = false;
+    if (redSeleccionada === 'testnet') testnet = true;
+
     const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
 
     try {
-        switch (tipo) {
-            case 'legacy':
-                bitcoin.address.toOutputScript(address, network); // p2pkh
-                break;
-            case 'segwit':
-                const decoded = bitcoin.address.fromBase58Check(address);
-                if (decoded.version !== 5) return false; // p2sh (3...)
-                break;
-            case 'native':
-                bitcoin.address.fromBech32(address); // bech32 (bc1...)
-                break;
-            default:
-                return false;
-        }
+        // Intenta como legacy (P2PKH) o segwit-P2SH (P2SH también puede entrar aquí)
+        bitcoin.address.toOutputScript(address, network);
         return true;
-    } catch (e) {
-        return false;
-    }
+    } catch (_) {}
+
+    try {
+        // Intenta como segwit-P2SH específicamente (empieza por "3" en mainnet o "2" en testnet)
+        const decoded = bitcoin.address.fromBase58Check(address);
+        if (decoded.version === 5) {
+            // Solo válido si encaja con la red deseada
+            bitcoin.address.toOutputScript(address, network);
+            return true;
+        }
+    } catch (_) {}
+
+    try {
+        // Intenta como native segwit (Bech32: bc1... o tb1...)
+        const { prefix } = bitcoin.address.fromBech32(address);
+        const expectedPrefix = testnet ? 'tb' : 'bc';
+        if (prefix === expectedPrefix) {
+            bitcoin.address.toOutputScript(address, network);
+            return true;
+        }
+    } catch (_) {}
+
+    return false;
+}
+
+export function esDireccionEthValida(address: string): boolean {
+    return ethers.isAddress(address);
 }
 
 // FUNCIONA.

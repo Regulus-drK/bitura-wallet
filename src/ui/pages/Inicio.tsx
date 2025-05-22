@@ -33,7 +33,7 @@ function Inicio() {
     <div className="flex min-h-screen bg-neutral-800 text-white">
       <SidebarMenu />
 
-      <main className="ml-60 flex-1 p-6 text-center">
+      <main className="ml-60 flex-1 p-6 text-center relative">
         <Suspense fallback={<Spinner />}>
           <Outlet />
         </Suspense>
