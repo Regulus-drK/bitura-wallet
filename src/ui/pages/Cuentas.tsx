@@ -45,7 +45,7 @@ function Cuentas() {
 
                 if (fondosBtc) {
                     setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosBtc.totalBtc }));
-                    wallet.ultSaldoGuardado = fondosBtc.totalBtc.toFixed(6);
+                    wallet.ultSaldoGuardado = fondosBtc.totalBtc.toFixed(7);
 
                     const walletActualizada = await updateWallet(wallet.nombre, wallet);
 
@@ -127,7 +127,7 @@ function Cuentas() {
                                     <span>{wallet.ultSaldoGuardado} BTC</span>
                                 </>
                                 )
-                                : <span>{saldos[wallet.nombre].toFixed(6)} BTC</span>
+                                : <span>{saldos[wallet.nombre].toFixed(7)} BTC</span>
                             }
                             </span>
                         </div>

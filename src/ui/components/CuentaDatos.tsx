@@ -63,7 +63,7 @@ function CuentaDatos() {
         if (isCancelled.current || !fondosBtc) return;
 
         setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosBtc.totalBtc }));
-        wallet.ultSaldoGuardado = fondosBtc.totalBtc.toFixed(6);
+        wallet.ultSaldoGuardado = fondosBtc.totalBtc.toFixed(7);
 
         const totalEur = fondosBtc.totalBtc.toNumber() * precioMoneda;
         setSaldoEur(totalEur);
@@ -168,7 +168,7 @@ function CuentaDatos() {
             </>
           ) : (
             <>
-              {saldos[wallet.nombre].toFixed(6)} {wallet.tipoMoneda}
+              {saldos[wallet.nombre].toFixed(7)} {wallet.tipoMoneda}
             </>
           )}
         </div>

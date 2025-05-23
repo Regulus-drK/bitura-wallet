@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { WalletInfo } from "../../types/WalletInfo";
 import BigNumber from "bignumber.js";
 import { getAllWallets, getMnemonic, getRedBtcSeleccionada, listarPrecios, updateWallet } from "../../services/apiService";
-import { enviarBtc, esDireccionBtcValida, esDireccionEthValida, verificarFondosDireccionesBtc } from "../../services/walletService";
+import { calcularEnvioTotal, enviarBtc, esDireccionBtcValida, esDireccionEthValida, verificarFondosDireccionesBtc } from "../../services/walletService";
 import btcIcon from "../../assets/crypto/bitcoin.png";
 import ethIcon from "../../assets/crypto/ether.png";
 import Spinner from "../components/Spinner";
@@ -24,7 +24,7 @@ function EnviarCrypto() {
     const [receiptAddress, setReceiptAddress] = useState<string>("");
     const [isValidAddress, setIsValidAddress] = useState<boolean | null>(null);
     const [isSameAddress, setIsSameAddress] = useState<boolean>(false);
-    const [saldoWalletComprobado, setSaldoWalletComprobado] = useState<boolean | null>(null);
+    const [saldoWalletComprobado, setSaldoWalletComprobado] = useState<boolean>(false);
     const [precioActCrypto, setPrecioActCrypto] = useState<number>(0);
 
     const [cantidadAenviar, setCantidadAenviar] = useState<string>("");
@@ -36,6 +36,9 @@ function EnviarCrypto() {
     const [fondosBTC, setFondosBTC] = useState<BtcAddressUtxo[] | null>(null);
     const [saldoInsuficiente, setSaldoInsuficiente] = useState<boolean | null>(null);
     const [saldoConFeeInsuficiente, setSaldoConFeeInsuficiente] = useState<boolean | null>(null);
+    // TODO: Mostrar error de fallo al calcular el fee y dar motivo
+    const [falloAlCalcularFee, setFalloAlCalcularFee] = useState<boolean>(false);
+    const [shouldExecuteTransaction, setShouldExecuteTransaction ] = useState<boolean>(false);
     const [isTransactionSuccessful, setIsTransactionSuccessful] = useState<boolean | null>(null);
     const [txInfo, setTxInfo] = useState({
         txid: '',
@@ -45,8 +48,6 @@ function EnviarCrypto() {
         fee: new BigNumber(0)
     });
     const [txError, setTxError] = useState<string>("");
-
-    //TODO: Gestionar el mostrar error en Tx
 
     const walletsBTC = wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redBtcSeleccionada);
     const walletsETH = wallets.filter(w => w.tipoMoneda === "ETH");
@@ -85,7 +86,7 @@ function EnviarCrypto() {
 
                 if (result) {
                     setSaldos(prev => ({ ...prev, [w.nombre]: result ? result.totalBtc : null }));
-                    w.ultSaldoGuardado = result.totalBtc.toFixed(6);
+                    w.ultSaldoGuardado = result.totalBtc.toFixed(7);
             
                     const walletActualizada = await updateWallet(w.nombre, w);
 
@@ -206,6 +207,37 @@ function EnviarCrypto() {
         }
     }
 
+    const handleEnviarTodo = async () => {
+        if (wallet?.tipoMoneda === 'BTC') {
+            try {
+                const resultado = await calcularEnvioTotal(fondosBTC!, receiptAddress, redBtcSeleccionada!);
+                if (resultado) {
+                    const SATOSHIS_IN_BTC = new BigNumber(1e8);
+                    setCantidadAenviar(resultado.cantidadEnviar.dividedBy(SATOSHIS_IN_BTC).toString());
+                    setComision(resultado.feeReal.toString());
+                }
+            } catch (err) {
+                console.error('Error al ajustar enviar todo BTC: ', err);
+                setFalloAlCalcularFee(true);
+            }
+        }
+    }
+
+    const handleCalcularComisionAuto = async () => {
+        if (wallet?.tipoMoneda === 'BTC') {
+            if (Number(cantidadAenviar) * 1 === 0) return;
+            try {
+                const resultado = await calcularEnvioTotal(fondosBTC!, receiptAddress, redBtcSeleccionada!, Number(cantidadAenviar));
+                if (resultado) {
+                    setComision(resultado.feeReal.toString());
+                }
+            } catch (err) {
+                console.error('Error al calcular fee automáticamente: ', err);
+                setFalloAlCalcularFee(true);
+            }
+        }
+    }
+
     const comprobarSaldoAEnviar = () => {
         if (wallet?.tipoMoneda === 'BTC') {
             let comisionEnBTC = new BigNumber(Number(comision) / 100_000_000);
@@ -215,7 +247,7 @@ function EnviarCrypto() {
             if (!saldoActual) return;
 
             // ¿Saldo sin fee suficiente?
-            if (saldoActual.minus(cantidadAEnviarBN).isLessThanOrEqualTo(0)) {
+            if (saldoActual.minus(cantidadAEnviarBN).isLessThan(0)) {
                 setSaldoInsuficiente(true);
                 return;
             }
@@ -226,14 +258,31 @@ function EnviarCrypto() {
 
             // Menor o igual
             // ¿Saldo con fee suficiente?
-            if (restoSaldo.isLessThanOrEqualTo(0)) {
+            if (restoSaldo.isLessThan(0)) {
                 setSaldoConFeeInsuficiente(true);
                 return;
             }
 
             setSaldoConFeeInsuficiente(false);
             setSaldoInsuficiente(false);
+        }
+    }
+
+    const ventanaCantidadAEnviar = () => {
+        setSaldoConFeeInsuficiente(null);
+        setSaldoInsuficiente(null);
+        setSaldoWalletComprobado(false);
+        setShouldExecuteTransaction(false);
+        reconsultarSaldoCuentaSelec(wallet!);
+    }
+
+    const verificarTransaccion = (valor: boolean) => {
+        setShouldExecuteTransaction(valor);
+        if (valor) {
             realizarTransaccion();
+        } else {
+            // Esto hace aparecer de nuevo la ventana de poner la cantidadAenviar
+            ventanaCantidadAEnviar();
         }
     }
 
@@ -264,7 +313,7 @@ function EnviarCrypto() {
         setWalletReceived(false);
         setIsValidAddress(null);
         setIsSameAddress(false);
-        setSaldoWalletComprobado(null);
+        setSaldoWalletComprobado(false);
         setReceiptAddress("");
         setCantidadAenviar("");
         setCantidadAenviarEur(0);
@@ -273,6 +322,7 @@ function EnviarCrypto() {
         setPrecioActCrypto(0);
         setSaldoInsuficiente(null);
         setSaldoConFeeInsuficiente(null);
+        setShouldExecuteTransaction(false);
         setIsTransactionSuccessful(null);
     }
 
@@ -283,7 +333,7 @@ function EnviarCrypto() {
         const isEnabled = saldo?.isGreaterThan(0);
         const saldoDisplay = isLoading
             ? <><Spinner small size={16} /> <span>{w.ultSaldoGuardado} {w.tipoMoneda}</span></>
-            : `${saldo.toFixed(6)} ${w.tipoMoneda}`;
+            : `${saldo.toFixed(7)} ${w.tipoMoneda}`;
 
         const baseStyle = "flex items-center justify-between px-5 py-3 rounded-xl transition";
         const bgStyle = isEnabled ? "bg-neutral-700 hover:bg-neutral-600 cursor-pointer" : "bg-neutral-900 opacity-60 cursor-not-allowed";
@@ -331,34 +381,36 @@ function EnviarCrypto() {
         {!(saldoConFeeInsuficiente === false && saldoInsuficiente === false) ? (
             <>
                 {!walletReceived ? (
-                    <div className="bg-neutral-800 rounded-xl p-4 w-full max-w-[950px] min-w-[300px] max-h-[430px] overflow-y-auto shadow-lg">
-                        <p className="text-sm text-gray-300 mb-2 text-center">Seleccione una cuenta con saldo para enviar fondos:</p>
+                    <>
+                        <p className="text-sm text-gray-300 mb-4 text-center">Seleccione una cuenta con saldo para enviar fondos:</p>
 
-                        {(walletsBTC.length + walletsETH.length === 0) ? (
-                            <h1 className="text-white bg-neutral-700 mb-2 rounded-xl px-6 py-4 flex text-center align-center justify-center text-xl">
-                                No se han encontrado cuentas. Cree una para enviar fondos.
-                            </h1>
-                        ) : (
-                            <>
-                                {walletsBTC.length > 0 && (
-                                    <>
-                                        <h3 className="text-left text-gray-200 text-sm font-bold mt-2 mb-1">Bitcoin (BTC)</h3>
-                                        <ul className="space-y-2 mb-2">
-                                            {walletsBTC.map(w => renderWalletItem(w, btcIcon))}
-                                        </ul>
-                                    </>
-                                )}
-                                {walletsETH.length > 0 && (
-                                    <>
-                                        <h3 className="text-left text-gray-200 text-sm font-bold mt-2 mb-1">Ethereum (ETH)</h3>
-                                        <ul className="space-y-2">
-                                            {walletsETH.map(w => renderWalletItem(w, ethIcon))}
-                                        </ul>
-                                    </>
-                                )}
-                            </>
-                        )}
-                    </div>
+                        <div className="bg-neutral-800 rounded-xl border-1 border-gray-500 p-4 w-full max-w-[950px] min-w-[300px] max-h-[430px] overflow-y-auto shadow-lg">
+                            {(walletsBTC.length + walletsETH.length === 0) ? (
+                                <h1 className="text-white bg-neutral-700 mb-2 rounded-xl px-6 py-4 flex text-center align-center justify-center text-xl">
+                                    No se han encontrado cuentas. Cree una para enviar fondos.
+                                </h1>
+                            ) : (
+                                <>
+                                    {walletsBTC.length > 0 && (
+                                        <>
+                                            <h3 className="text-left text-gray-200 text-sm font-bold mt-2 mb-1">Bitcoin (BTC)</h3>
+                                            <ul className="space-y-2 mb-2">
+                                                {walletsBTC.map(w => renderWalletItem(w, btcIcon))}
+                                            </ul>
+                                        </>
+                                    )}
+                                    {walletsETH.length > 0 && (
+                                        <>
+                                            <h3 className="text-left text-gray-200 text-sm font-bold mt-2 mb-1">Ethereum (ETH)</h3>
+                                            <ul className="space-y-2">
+                                                {walletsETH.map(w => renderWalletItem(w, ethIcon))}
+                                            </ul>
+                                        </>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </>
                 ) : (
                     <div className="text-white text-center mb-4 w-full">
                         {/* Contenedor de la flecha y título - ahora ocupa todo el ancho */}
@@ -411,7 +463,7 @@ function EnviarCrypto() {
                             </div>
                             <p className="text-md font-medium text-gray-300">
                                 Saldo: {saldos[wallet!.nombre] ? saldos[wallet!.nombre]?.toFixed(7) : wallet?.ultSaldoGuardado} {wallet?.tipoMoneda} {' '}
-                                ≈ {saldos[wallet!.nombre] ? (saldos[wallet!.nombre]?.multipliedBy(precioActCrypto).toFixed(2)) : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
+                                ≈ {precioActCrypto !== 0 ? (saldos[wallet!.nombre]?.multipliedBy(precioActCrypto).toFixed(2)) : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
                             </p>
                         </div>
 
@@ -471,27 +523,45 @@ function EnviarCrypto() {
                                 <h2 className="text-xl font-bold text-white text-center mb-4">
                                     Introduzca la cantidad de {wallet?.tipoMoneda} a enviar
                                 </h2>
-
                                 {/* Input de cantidad y visualización en euros */}
-                                <div className="flex items-center gap-4 justify-center mb-2">
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        placeholder={`Cantidad en ${wallet?.tipoMoneda}`}
-                                        value={cantidadAenviar}
-                                        onChange={(e) => {
-                                            setCantidadAenviar(e.target.value);
-                                            setSaldoInsuficiente(null);
-                                            setSaldoConFeeInsuficiente(null);
-                                        }}
-                                        className={`w-full max-w-[205px] bg-neutral-800 hover:bg-neutral-900
-                                         text-white font-semibold py-1 px-3 rounded-xl shadow-md
-                                         transition duration-300 ${saldoInsuficiente || saldoConFeeInsuficiente
-                                            ? "border-red-500 border-2" : "border-gray-500 border"}`}
-                                    />
-                                    <span className="text-white font-semibold text-md min-w-[40px] text-right">
-                                        ≈ {cantidadAenviarEur.toFixed(2)} €
-                                    </span>
+                                <div className="flex flex-col items-start gap-1 justify-center mb-2">
+                                    <div className="flex flex-col gap-1 w-full">
+                                        <div className="flex items-center gap-4 justify-center w-full">
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                placeholder={`Cantidad en ${wallet?.tipoMoneda}`}
+                                                value={cantidadAenviar}
+                                                onChange={(e) => {
+                                                    setCantidadAenviar(e.target.value);
+                                                    setSaldoInsuficiente(null);
+                                                    setSaldoConFeeInsuficiente(null);
+                                                    handleCalcularComisionAuto();
+                                                }}
+                                                className={`w-full max-w-[205px] bg-neutral-800 hover:bg-neutral-900
+                                                text-white font-semibold py-1 px-3 rounded-xl shadow-md
+                                                transition duration-300 ${saldoInsuficiente || saldoConFeeInsuficiente
+                                                    ? "border-red-500 border-2" : "border-gray-500 border"}`}
+                                            />
+                                            <span className="text-white font-semibold text-md min-w-[40px] text-right">
+                                                ≈ {cantidadAenviarEur.toFixed(2)} €
+                                            </span>
+                                        </div>
+
+                                        {/* Botón de "Enviar todo"*/}
+                                        <div className="w-full flex justify-center mb-5">
+                                            <button
+                                                type="button"
+                                                disabled={!saldoWalletComprobado}
+                                                onClick={handleEnviarTodo}
+                                                className={`text-sm underline transition mt-1 
+                                                    ${saldoWalletComprobado ? "text-blue-400  hover:text-blue-300 cursor-pointer" 
+                                                        : "text-gray-400 cursor-not-allowed"} `}
+                                            >
+                                                Enviar todo
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Desplegable para comisión de red */}
@@ -533,6 +603,9 @@ function EnviarCrypto() {
                                             </span>
                                             <p className="text-sm text-gray-400 mt-1">
                                                 Comisión en {wallet?.tipoMoneda === 'BTC' ? 'sats' : 'gwei'}
+                                            </p>
+                                            <p className="text-sm text-gray-400 mt-1">
+                                                No lo modifique si no desea ajustar un fee específico.
                                             </p>
                                         </div>
                                     )}
@@ -577,7 +650,45 @@ function EnviarCrypto() {
         ) : (
             // Este bloque se muestra si saldoConFeeInsuficiente y saldoInsuficiente son false (es decir, no hay problemas de saldo)
             <>
-                {isTransactionSuccessful === null &&
+                {!shouldExecuteTransaction &&
+                    <>
+                        <div className="bg-neutral-700 mb-2 rounded-xl px-6 py-4 space-y-6 flex flex-col text-center items-center justify-center">
+                            <h1 className="text-white text-xl font-semibold">
+                                ¿Desea realizar la transacción a <code className="font-bold">{receiptAddress}</code>?
+                            </h1>
+                            <div className="flex flex-col items-center">
+                                <span className="text-lg font-semibold">Cantidad a enviar:</span>
+                                <span className="text-base">{cantidadAenviar} {wallet?.tipoMoneda} ≈ {cantidadAenviarEur.toFixed(2)} €</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <span className="text-lg font-semibold">Comisión de red a pagar:</span>
+                                <span className="text-base">{comision} {wallet?.tipoMoneda === "BTC" ? 'sats' : 'wei'} ≈ {cantidadComisionEur.toFixed(2)} €</span>
+                            </div>
+                        </div>
+                                            
+                        <div className="mt-5 flex flex-row items-center gap-x-4 text-center">
+                            <button
+                                onClick={() => {
+                                    verificarTransaccion(false);
+                                }}
+                                className="px-4 py-2 rounded-xl shadow-md border flex items-center gap-2 transition duration-300 border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"
+                            >
+                                <ArrowLeft className="w-5 h-5" />
+                                Volver
+                            </button>
+                            <button
+                                onClick={() => {
+                                    verificarTransaccion(true);
+                                }}
+                                className="px-4 py-2 rounded-xl shadow-md border flex items-center gap-2 transition duration-300 border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"
+                            >
+                                <ArrowUp className="w-5 h-5" />
+                                Enviar
+                            </button>
+                        </div>
+                    </>
+                }
+                {(isTransactionSuccessful === null && shouldExecuteTransaction) &&
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                         <Spinner small size={100}/>
                     </div>
@@ -625,11 +736,11 @@ function EnviarCrypto() {
                         </div>
                         <div className="flex flex-col items-center">
                             <span className="text-lg font-semibold">Cantidad enviada:</span>
-                            <span className="text-base">{txInfo.totalInput.toFixed(6)} {wallet?.tipoMoneda}</span>
+                            <span className="text-base">{txInfo.totalInput.toFixed(8)} {wallet?.tipoMoneda} ≈ {cantidadAenviarEur.toFixed(2)} €</span>
                         </div>
                         <div className="flex flex-col items-center">
                             <span className="text-lg font-semibold">Tarifa de red:</span>
-                            <span className="text-base">{txInfo.fee.toFixed(6)} {wallet?.tipoMoneda}</span>
+                            <span className="text-base">{txInfo.fee.toFixed(8)} {wallet?.tipoMoneda} ≈ {cantidadComisionEur.toFixed(2)} €</span>
                         </div>
                         {/* Botón Home */}
                         <div className="mt-5 flex flex-col items-center text-center">
@@ -659,6 +770,15 @@ function EnviarCrypto() {
                     </div>
                     {/* Botón Home */}
                     <div className="mt-5 flex flex-col items-center text-center">
+                        <button
+                            onClick={() => {
+                                ventanaCantidadAEnviar();
+                            }}
+                            className="px-4 py-2 rounded-xl shadow-md border flex items-center gap-2 transition duration-300 border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                            Volver
+                        </button>
                         <button
                             onClick={() => navigate("/inicio")}
                             className="px-4 py-2 rounded-xl shadow-md border flex items-center gap-2 transition duration-300 border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"
