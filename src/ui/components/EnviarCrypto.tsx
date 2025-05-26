@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
 import type { WalletInfo } from "../../types/WalletInfo";
 import BigNumber from "bignumber.js";
+import { ethers } from 'ethers';
 import { consultarDireccion, getAllWallets, getMnemonic, getRedSeleccionada as getRedSeleccionada, listarPrecios, updateWallet } from "../../services/apiService";
 import { calcularEnvioTotalBtc, calcularEnvioTotalEth, enviarBtc, enviarEth, esDireccionBtcValida, esDireccionEthValida, verificarFondosDireccionesBtc } from "../../services/walletService";
 import btcIcon from "../../assets/crypto/bitcoin.png";
@@ -33,6 +34,7 @@ function EnviarCrypto() {
     const [mostrarComision, setMostrarComision] = useState<boolean>(false);
     const [comision, setComision] = useState("");
     const [gasLimit, setGasLimit] = useState<bigint>(1n); // Solo para ETH
+    const [ethFee, setEthFee] = useState<string>("");
     const [cantidadComisionEur, setCantidadComisionEur] = useState<number>(0);
 
     const [fondosBTC, setFondosBTC] = useState<BtcAddressUtxo[] | null>(null);
@@ -174,7 +176,7 @@ function EnviarCrypto() {
             setIsValidAddress(true);
             await cargarPreciosCrypto();
             reconsultarSaldoCuentaSelec(wallet!);
-            setComision("500000"); // TODO: Comprobar (si eso en mainnet) que funciona bien
+            setComision("1000000");
         }
     };
 
@@ -243,7 +245,7 @@ function EnviarCrypto() {
             const fee = Number(comision);
             const feeEur = wallet?.tipoMoneda === 'BTC'
                 ? (fee / 100_000_000) * precioActCrypto
-                : (fee / 1_000_000_000) * precioActCrypto;
+                : (Number(ethFee)) * precioActCrypto;
             setCantidadComisionEur(feeEur);
         }
     }
@@ -271,7 +273,9 @@ function EnviarCrypto() {
                     wallet!, mnemonic, receiptAddress, redSeleccionada!, saldos[wallet!.nombre]!.toString());
                 if (resultado) {
                     setCantidadAenviar(resultado.cantidadEnviar);
-                    setComision(resultado.feeGwei);
+                    setComision(resultado.gasPrice);
+                    setGasLimit(resultado.gasLimit);
+                    setEthFee(ethers.formatEther(Number(resultado.gasPrice) * Number(resultado.gasLimit)));
                 }
             } catch (err) {
                 console.error('Error al ajustar enviar todo ETH: ', err);
@@ -303,8 +307,9 @@ function EnviarCrypto() {
                 const resultado = await calcularEnvioTotalEth(
                     wallet!, mnemonic, receiptAddress, redSeleccionada!, cantidadAenviar);
                 if (resultado) {
-                    setComision(resultado.feeGwei);
+                    setComision(resultado.gasPrice);
                     setGasLimit(resultado.gasLimit);
+                    setEthFee(ethers.formatEther(Number(resultado.gasPrice) * Number(resultado.gasLimit)));
                     setFalloAlCalcularFee(false);
                 }
             } catch (err) {
@@ -349,6 +354,7 @@ function EnviarCrypto() {
         setSaldoWalletComprobado(false);
         setShouldExecuteTransaction(false);
         reconsultarSaldoCuentaSelec(wallet!);
+        setIsTransactionSuccessful(null);
     }
 
     const verificarTransaccion = (valor: boolean) => {
@@ -387,20 +393,18 @@ function EnviarCrypto() {
                 const mnemonic = await getMnemonic(password);
                 if (!mnemonic) return;
 
-                // Pasamos de Gwei a Wei
-                const comisionEnWei: bigint = BigInt(Number(comision) * 1_000_000_000);
+                const gasPrice = BigInt(comision);  // convertir string a bigint
                 const txEth = await enviarEth(wallet!, mnemonic, receiptAddress, 
-                    cantidadAenviar, redSeleccionada!, comisionEnWei, gasLimit);
+                    cantidadAenviar, redSeleccionada!, gasPrice, gasLimit);
                 if (txEth) {
-                    let txEthInfo = {
+                    let txEthInfo = { // Esto en realidad sobra ya
                         txid: txEth,
                         rawTx: '',
                         totalInput: new BigNumber(cantidadAenviar),
                         totalOutput: 0,
-                        fee: new BigNumber(comision).dividedBy(1_000_000_000)
+                        fee: BigNumber(gasPrice)
                     };
                     setTxInfo(txEthInfo);
-                    console.log(`Éxito, Input: ${txEthInfo.totalInput}\nOutput: ${txEthInfo.totalOutput}\nFee: ${txEthInfo.fee}\nTxid: ${txEthInfo.txid}`)
                     setIsTransactionSuccessful(true);
                 } else {
                     console.error('Fallo al enviar ETH.')
@@ -724,7 +728,7 @@ function EnviarCrypto() {
                                                 ≈ {cantidadComisionEur.toFixed(2)} €
                                             </span>
                                             <p className="text-sm text-gray-400 mt-1">
-                                                Comisión en {wallet?.tipoMoneda === 'BTC' ? 'sats' : 'gwei'}
+                                                Comisión en {wallet?.tipoMoneda === 'BTC' ? 'sats' : 'wei'}
                                             </p>
                                             <p className="text-sm text-gray-400 mt-1">
                                                 No lo modifique si no desea ajustar un fee específico.
@@ -789,7 +793,11 @@ function EnviarCrypto() {
                             </div>
                             <div className="flex flex-col items-center">
                                 <span className="text-lg font-semibold">Comisión de red a pagar:</span>
-                                <span className="text-base">{comision} {wallet?.tipoMoneda === "BTC" ? 'sats' : 'gwei'} ≈ {cantidadComisionEur.toFixed(2)} €</span>
+                                { wallet?.tipoMoneda === 'BTC' ? (
+                                    <span className="text-base">{comision} sats ≈ {cantidadComisionEur.toFixed(2)} €</span>
+                                ) : (
+                                    <span className="text-base">{ethFee} ETH ≈ {cantidadComisionEur.toFixed(2)} €</span>
+                                )}
                             </div>
                         </div>
                                             
@@ -866,7 +874,11 @@ function EnviarCrypto() {
                         </div>
                         <div className="flex flex-col items-center">
                             <span className="text-lg font-semibold">Tarifa de red:</span>
-                            <span className="text-base">{txInfo.fee.toFixed(8)} {wallet?.tipoMoneda} ≈ {cantidadComisionEur.toFixed(2)} €</span>
+                            { wallet?.tipoMoneda === 'BTC' ? (
+                                <span className="text-base">{txInfo.fee.toFixed(8)} {wallet?.tipoMoneda} ≈ {cantidadComisionEur.toFixed(2)} €</span>
+                            ) : (
+                                <span className="text-base">{ethFee} {wallet?.tipoMoneda} ≈ {cantidadComisionEur.toFixed(2)} €</span>
+                            )}
                         </div>
                         {/* Botón Home */}
                         <div className="mt-5 flex flex-col items-center text-center">
@@ -888,7 +900,7 @@ function EnviarCrypto() {
                         <CircleX className="h-10 w-10" />
                         <h1 className="text-3xl">No se ha podido realizar la transferencia.</h1>
                     </div>
-                    <div className="text-white text-lg">
+                    <div className="text-white text-lg max-w-md break-words text-center px-4">
                         <h1>{txError}</h1>
                     </div>
                     <div className="text-white text-lg">

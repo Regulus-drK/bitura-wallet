@@ -929,7 +929,7 @@ export async function calcularEnvioTotalEth(
 
     // Cantidad a enviar = cantidad total - fee total
     const cantidadEnviarWei = cantidadEthWei - feeTotalWei;
-
+    
     return {
         cantidadEnviar: ethers.formatEther(cantidadEnviarWei), // en string ETH
         feeGwei: ethers.formatUnits(feeTotalWei.toString(), "gwei"), // Luego reconvertir a wei

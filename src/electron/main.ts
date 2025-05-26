@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, session } from 'electron';
 import Store from 'electron-store';
 import path from 'path';
 import { isDev, getJdkPath, getJarPath, savePassword, getPassword, saveMnemonic, getMnemonic, deleteConfigFiles } from './util.js';
@@ -24,7 +24,9 @@ function createMainWindow(): BrowserWindow {
             contextIsolation: true,
             preload: isDev()
                 ? path.join(process.cwd(), 'dist-electron', 'preload.js')
-                : path.join(app.getAppPath(), 'dist-electron', 'preload.js')
+                : path.join(app.getAppPath(), 'dist-electron', 'preload.js'),
+            partition: 'persist:default',
+            webSecurity: false
         }
     });
 
