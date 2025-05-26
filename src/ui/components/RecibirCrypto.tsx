@@ -51,11 +51,11 @@ function RecibirCrypto() {
     };
 
     const handlePublicAddress = async () => {
+        setDireccionPublica(wallet!.direccionPublica);
         generarQR(wallet!.direccionPublica).then(setQrBase64);
         if (wallet?.tipoMoneda === 'BTC') {
             if (!password) return;
             try {
-                setDireccionPublica(wallet.direccionPublica);
                 const mnemonic = await getMnemonic(password);
                 await crearDireccionPublicaBtc(mnemonic, wallet);
             } catch (err) {
@@ -92,6 +92,7 @@ function RecibirCrypto() {
         setWallet(undefined);
         setWalletReceived(false);
         setQrBase64('');
+        setDireccionPublica('');
     }
     
     // Función para mostrar el cuadro de la wallet
