@@ -73,7 +73,7 @@ function CuentaDatos() {
       } else {
         let testnet = redSeleccionada === 'testnet' ? true : false;
         const result = await consultarDireccion(wallet.direccionPublica, '1', testnet);
-        
+
         if (isCancelled.current) return;
         
         if (result) {

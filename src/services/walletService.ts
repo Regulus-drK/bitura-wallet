@@ -857,9 +857,10 @@ export async function crearYGuardarWalletEth(nombre: string, mnemonic: string | 
 export async function calcularFeeEth(
     wallet: WalletInfo,
     mnemonic: string,
+    destino: string,
     cantidadEth: string,
     redSeleccionada: 'mainnet' | 'testnet',
-    feeWei: BigNumber = new BigNumber(0)) {
+    feeWei?: BigNumber) {
     if (!mnemonic || !validarMnemonic(mnemonic)) return;
 
     // Convertir la frase semilla en una semilla binaria
@@ -884,17 +885,16 @@ export async function calcularFeeEth(
     const signer = new ethers.Wallet(Buffer.from(clavePrivada).toString('hex'), provider);
 
     const txBase = {
+        to: destino,
         value: ethers.parseEther(cantidadEth)
     };
 
-    let gasLimit: bigint;
-    if (feeWei.isZero()) {
-        gasLimit = await signer.estimateGas(txBase);
-    } else {
-        gasLimit = BigInt(feeWei.toFixed());
-    }
+    // Estimar gasLimit
+    const gasLimit = await signer.estimateGas(txBase);
 
-    const { gasPrice } = await provider.getFeeData();
+    // Obtener gasPrice (si no hay manual, usar el de la red)
+    let gasPrice = feeWei ? BigInt(feeWei.toFixed()) : (await provider.getFeeData()).gasPrice;
+
     if (!gasPrice) throw new Error("No se pudo obtener gasPrice");
 
     return {
@@ -906,20 +906,35 @@ export async function calcularFeeEth(
 export async function calcularEnvioTotalEth(    
     wallet: WalletInfo,
     mnemonic: string,
+    destino: string,
     redSeleccionada: 'mainnet' | 'testnet',
     cantidadEth: string) {
     if (!mnemonic || !validarMnemonic(mnemonic)) return;
     
-    let resultadoFees = await calcularFeeEth(wallet, mnemonic, cantidadEth, redSeleccionada);
+    let resultadoFees = await calcularFeeEth(wallet, mnemonic, destino, cantidadEth, redSeleccionada);
 
     if (!resultadoFees) throw new Error('Error al calcular los fees.')
 
-    let cantidadEnviar = Number(cantidadEth) - Number(ethers.formatUnits(resultadoFees.gasPrice, "gwei"));
+    const { gasLimit, gasPrice } = resultadoFees;
+
+    // fee total en wei = gasLimit * gasPrice
+    const feeTotalWei = gasLimit * gasPrice;
+
+    // Convertir cantidadEth a wei (BigInt)
+    const cantidadEthWei = ethers.parseEther(cantidadEth); // bigint
+
+    if (cantidadEthWei < feeTotalWei) {
+        throw new Error('Cantidad muy pequeña para cubrir el fee');
+    }
+
+    // Cantidad a enviar = cantidad total - fee total
+    const cantidadEnviarWei = cantidadEthWei - feeTotalWei;
 
     return {
-        cantidadEnviar,
-        feeGwei: ethers.formatUnits(resultadoFees.gasPrice, "wei"),
-        gasLimit: resultadoFees.gasLimit
+        cantidadEnviar: ethers.formatEther(cantidadEnviarWei), // en string ETH
+        feeGwei: ethers.formatUnits(feeTotalWei.toString(), "gwei"), // Luego reconvertir a wei
+        gasLimit,
+        gasPrice: gasPrice.toString()
     };
 }
 
@@ -963,6 +978,7 @@ export async function enviarEth(
 
     try {
         const response = await signer.sendTransaction(tx);
+        await response.wait();
         console.log("Transacción enviada con éxito:", response.hash);
         return response.hash;
     } catch (error: any) {

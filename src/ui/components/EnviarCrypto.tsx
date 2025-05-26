@@ -268,9 +268,9 @@ function EnviarCrypto() {
 
                 if (!mnemonic) return;
                 const resultado = await calcularEnvioTotalEth(
-                    wallet!, mnemonic, redSeleccionada!, wallet?.ultSaldoGuardado!);
+                    wallet!, mnemonic, receiptAddress, redSeleccionada!, saldos[wallet!.nombre]!.toString());
                 if (resultado) {
-                    setCantidadAenviar(resultado.cantidadEnviar.toString());
+                    setCantidadAenviar(resultado.cantidadEnviar);
                     setComision(resultado.feeGwei);
                 }
             } catch (err) {
@@ -301,7 +301,7 @@ function EnviarCrypto() {
 
                 if (!mnemonic) return;
                 const resultado = await calcularEnvioTotalEth(
-                    wallet!, mnemonic, redSeleccionada!, cantidadAenviar);
+                    wallet!, mnemonic, receiptAddress, redSeleccionada!, cantidadAenviar);
                 if (resultado) {
                     setComision(resultado.feeGwei);
                     setGasLimit(resultado.gasLimit);
@@ -386,8 +386,11 @@ function EnviarCrypto() {
 
                 const mnemonic = await getMnemonic(password);
                 if (!mnemonic) return;
+
+                // Pasamos de Gwei a Wei
+                const comisionEnWei: bigint = BigInt(Number(comision) * 1_000_000_000);
                 const txEth = await enviarEth(wallet!, mnemonic, receiptAddress, 
-                    cantidadAenviar, redSeleccionada!, BigInt(comision), gasLimit);
+                    cantidadAenviar, redSeleccionada!, comisionEnWei, gasLimit);
                 if (txEth) {
                     let txEthInfo = {
                         txid: txEth,
@@ -428,6 +431,7 @@ function EnviarCrypto() {
         setSaldoConFeeInsuficiente(null);
         setShouldExecuteTransaction(false);
         setIsTransactionSuccessful(null);
+        setFalloAlCalcularFee(false);
     }
 
     // Función para mostrar el cuadro de la wallet
@@ -785,7 +789,7 @@ function EnviarCrypto() {
                             </div>
                             <div className="flex flex-col items-center">
                                 <span className="text-lg font-semibold">Comisión de red a pagar:</span>
-                                <span className="text-base">{comision} {wallet?.tipoMoneda === "BTC" ? 'sats' : 'wei'} ≈ {cantidadComisionEur.toFixed(2)} €</span>
+                                <span className="text-base">{comision} {wallet?.tipoMoneda === "BTC" ? 'sats' : 'gwei'} ≈ {cantidadComisionEur.toFixed(2)} €</span>
                             </div>
                         </div>
                                             

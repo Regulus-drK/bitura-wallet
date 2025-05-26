@@ -46,7 +46,7 @@ function Ajustes() {
                         Cambiar a red Testnet
                     </span>
                     <span className="text-sm text-gray-400">
-                        Cambia la red seleccionada de la principal a la de Testnet para realizar pruebas
+                        Cambia la red seleccionada de la principal a la de Testnet para realizar pruebas.
                     </span>
                 </div>
 
