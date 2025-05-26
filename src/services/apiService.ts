@@ -39,9 +39,9 @@ export async function listarPrecios(): Promise<CryptoAPIResponse | null> {
   }
 }
 
-export async function consultarDireccion(direccion: string, pagina: string): Promise<EthResponse | BtcResponse | null> {
+export async function consultarDireccion(direccion: string, pagina: string, testnet?: boolean): Promise<EthResponse | BtcResponse | null> {
   try {
-    const result = await window.api.consultarDireccion(direccion, pagina);
+    const result = await window.api.consultarDireccion(direccion, pagina, testnet);
     return result;
   } catch (err) {
     console.error("Error consultando dirección: ", err);
@@ -61,12 +61,12 @@ export function onWalletConfigChange(callback: (value: boolean) => void): () => 
   return window.api.onWalletConfigChange(callback);
 }
 
-export async function getRedBtcSeleccionada(): Promise<'mainnet' | 'testnet'> {
-  return window.api.getRedBtcSeleccionada();
+export async function getRedSeleccionada(): Promise<'mainnet' | 'testnet'> {
+  return window.api.getRedSeleccionada();
 }
 
-export async function setRedBtcSeleccionada(isTestnet: boolean): Promise<boolean> {
-  return window.api.setRedBtcSeleccionada(isTestnet);
+export async function setRedSeleccionada(isTestnet: boolean): Promise<boolean> {
+  return window.api.setRedSeleccionada(isTestnet);
 }
 
 export async function savePassword(password: string): Promise<void> {

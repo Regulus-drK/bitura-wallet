@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { getRedBtcSeleccionada } from "../../services/apiService";
+import { getRedSeleccionada } from "../../services/apiService";
 
 function InicioDashboard() {    
     const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet'>('mainnet');
 
     useEffect(() => {
         const detectarRedBtcSeleccionada = async () => {
-            setRedBtcSeleccionada(await getRedBtcSeleccionada());
+            setRedBtcSeleccionada(await getRedSeleccionada());
         }
         detectarRedBtcSeleccionada();
     }, []);

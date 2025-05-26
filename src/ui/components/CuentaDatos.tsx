@@ -6,17 +6,19 @@ import { useEffect, useRef, useState } from "react";
 import BigNumber from "bignumber.js";
 import Spinner from "./Spinner";
 import type { CryptoAPIResponse } from "../../types/CryptoPrices";
-import { getAllWallets, getMnemonic, listarPrecios, updateWallet } from "../../services/apiService";
+import { consultarDireccion, getAllWallets, getMnemonic, getRedSeleccionada, listarPrecios, updateWallet } from "../../services/apiService";
 import { ArrowDown, ArrowUp, ArrowLeft, RefreshCw } from "lucide-react";
 import { useWallets } from "../../context/WalletContext";
 import { useAuth } from "../../context/AuthContext";
 import { verificarFondosDireccionesBtc } from "../../services/walletService";
+import { parseEthResponse, type EthResponse } from "../../types/EthBalance";
 
 function CuentaDatos() {
   const { password } = useAuth();
   const { setWallets } = useWallets();
   const location = useLocation();
   const wallet: WalletInfo | undefined = location.state?.wallet;
+  const [redSeleccionada, setRedSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
   const [saldos, setSaldos] = useState<Record<string, BigNumber>>({});
   const [saldoEur, setSaldoEur] = useState<number>(-1);
   const [precioActCrypto, setPrecioActCrypto] = useState<CryptoAPIResponse | null>(null);
@@ -68,18 +70,32 @@ function CuentaDatos() {
         const totalEur = fondosBtc.totalBtc.toNumber() * precioMoneda;
         setSaldoEur(totalEur);
         wallet.ultSaldoGuardadoEur = totalEur;
-
-        const walletActualizada = await updateWallet(wallet.nombre, wallet);
-        if (isCancelled.current) return;
-
-        if (walletActualizada) {
-          const allWallets = await getAllWallets();
-          setWallets(allWallets);
-        } else {
-          console.error('Error al actualizar la wallet en localStorage.');
-        }
       } else {
-        // lógica ETH futura
+        let testnet = redSeleccionada === 'testnet' ? true : false;
+        const result = await consultarDireccion(wallet.direccionPublica, '1', testnet);
+        
+        if (isCancelled.current) return;
+        
+        if (result) {
+          const fondosEth = parseEthResponse(result as EthResponse);
+
+          setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosEth.balanceEth }));
+          wallet.ultSaldoGuardado = fondosEth.balanceEth.toFixed(7);
+
+          const totalEur = fondosEth.balanceEth.toNumber() * precioMoneda;
+          setSaldoEur(totalEur);
+          wallet.ultSaldoGuardadoEur = totalEur;
+        }
+      }
+      // Después de sacar los datos y ajustarlos, se actualiza la wallet en el JSON
+      const walletActualizada = await updateWallet(wallet.nombre, wallet);
+      if (isCancelled.current) return;
+
+      if (walletActualizada) {
+        const allWallets = await getAllWallets();
+        setWallets(allWallets);
+      } else {
+        console.error('Error al actualizar la wallet en localStorage.');
       }
     } catch (err) {
       console.error("Error al cargar precios o balances:", err);
@@ -87,11 +103,16 @@ function CuentaDatos() {
   };
 
   useEffect(() => {
+      const cargarRed = async () => setRedSeleccionada(await getRedSeleccionada());
+      cargarRed();
+  }, []);
+
+  useEffect(() => {
     if (!password) {
       navigate("/");
       return;
     }
-    if (!wallet) return;
+    if (!wallet || !redSeleccionada) return;
 
     isCancelled.current = false;
     loadPricesYBalances();
@@ -99,7 +120,7 @@ function CuentaDatos() {
     return () => {
       isCancelled.current = true;
     };
-  }, [wallet, password]);
+  }, [wallet, password, redSeleccionada]);
 
   const iconoCrypto = wallet.tipoMoneda === 'BTC' ? btcIcon : ethIcon;
   const fecha = new Date();
@@ -142,6 +163,12 @@ function CuentaDatos() {
           {wallet.red === "testnet" && (
             <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
               testnet
+            </span>
+          )}
+          {/* Para ETH */}
+          {wallet.tipoMoneda === "ETH" && redSeleccionada === 'testnet' && (
+            <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
+              testnet Sepolia
             </span>
           )}
         </div>

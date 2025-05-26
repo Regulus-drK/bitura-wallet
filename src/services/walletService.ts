@@ -419,7 +419,7 @@ function estimateTxSize(numInputs: number, numOutputs: number, addresses: string
   return numInputs * inputSize + numOutputs * outputSize + 10; // +10 para encabezados
 }
 
-export async function calcularEnvioTotal(
+export async function calcularEnvioTotalBtc(
   direccionesConFondos: BtcAddressUtxo[],
   destino: string,
   redSeleccionada: 'mainnet' | 'testnet',
@@ -804,7 +804,7 @@ function crearWalletEth(mnemonic: string | null, indexPrivada: number) {
     // Derivar raíz BIP32
     const root = bip32.fromSeed(binSeed);
 
-    const path = `m/44'/60'/${indexPrivada}'/0`;
+    const path = `m/44'/60'/${indexPrivada}'/0/0`;
 
     const childEthereum = root.derivePath(path);
 
@@ -839,7 +839,7 @@ export async function crearYGuardarWalletEth(nombre: string, mnemonic: string | 
         pathBase: walletEth.path,
         indicePrivada: indexPrivada,
         direccionPublica: walletEth.address,
-        ultSaldoGuardado: '0.000000',
+        ultSaldoGuardado: '0.0000000',
         ultSaldoGuardadoEur: 0
     };
 
@@ -853,3 +853,122 @@ export async function crearYGuardarWalletEth(nombre: string, mnemonic: string | 
 
     return resultado;
 }
+
+export async function calcularFeeEth(
+    wallet: WalletInfo,
+    mnemonic: string,
+    cantidadEth: string,
+    redSeleccionada: 'mainnet' | 'testnet',
+    feeWei: BigNumber = new BigNumber(0)) {
+    if (!mnemonic || !validarMnemonic(mnemonic)) return;
+
+    // Convertir la frase semilla en una semilla binaria
+    const binSeed = bip39.mnemonicToSeedSync(mnemonic);
+
+    // Derivar raíz BIP32
+    const root = bip32.fromSeed(binSeed);
+
+    const childEthereum = root.derivePath(wallet.pathBase);
+
+    const clavePrivada = childEthereum.privateKey;
+
+    // Verificar que la clave privada de Ethereum no es undefined
+    if (!clavePrivada) {
+        throw new Error('Clave privada de Ethereum no disponible');
+    }
+
+    const red = redSeleccionada === 'mainnet' ? 'homestead' : 'sepolia';
+
+    const provider = new ethers.AlchemyProvider(red, "w3jHpOUC794ll1nhzQxVITITAs1MBWNM");
+
+    const signer = new ethers.Wallet(Buffer.from(clavePrivada).toString('hex'), provider);
+
+    const txBase = {
+        value: ethers.parseEther(cantidadEth)
+    };
+
+    let gasLimit: bigint;
+    if (feeWei.isZero()) {
+        gasLimit = await signer.estimateGas(txBase);
+    } else {
+        gasLimit = BigInt(feeWei.toFixed());
+    }
+
+    const { gasPrice } = await provider.getFeeData();
+    if (!gasPrice) throw new Error("No se pudo obtener gasPrice");
+
+    return {
+        gasLimit,
+        gasPrice
+    };
+}
+
+export async function calcularEnvioTotalEth(    
+    wallet: WalletInfo,
+    mnemonic: string,
+    redSeleccionada: 'mainnet' | 'testnet',
+    cantidadEth: string) {
+    if (!mnemonic || !validarMnemonic(mnemonic)) return;
+    
+    let resultadoFees = await calcularFeeEth(wallet, mnemonic, cantidadEth, redSeleccionada);
+
+    if (!resultadoFees) throw new Error('Error al calcular los fees.')
+
+    let cantidadEnviar = Number(cantidadEth) - Number(ethers.formatUnits(resultadoFees.gasPrice, "gwei"));
+
+    return {
+        cantidadEnviar,
+        feeGwei: ethers.formatUnits(resultadoFees.gasPrice, "wei"),
+        gasLimit: resultadoFees.gasLimit
+    };
+}
+
+export async function enviarEth(
+    wallet: WalletInfo,
+    mnemonic: string,
+    destino: string,
+    cantidadEth: string,
+    redSeleccionada: 'mainnet' | 'testnet',
+    gasPrice: bigint,
+    gasLimit: bigint) {
+    if (!mnemonic || !validarMnemonic(mnemonic)) return;
+
+    // Convertir la frase semilla en una semilla binaria
+    const binSeed = bip39.mnemonicToSeedSync(mnemonic);
+
+    // Derivar raíz BIP32
+    const root = bip32.fromSeed(binSeed);
+
+    const childEthereum = root.derivePath(wallet.pathBase);
+
+    const clavePrivada = childEthereum.privateKey;
+
+    // Verificar que la clave privada de Ethereum no es undefined
+    if (!clavePrivada) {
+        throw new Error('Clave privada de Ethereum no disponible');
+    }
+    
+    const red = redSeleccionada === 'mainnet' ? 'homestead' : 'sepolia';
+
+    const provider = new ethers.AlchemyProvider(red, "w3jHpOUC794ll1nhzQxVITITAs1MBWNM");
+
+    const signer = new ethers.Wallet(Buffer.from(clavePrivada).toString('hex'), provider);
+
+    const tx = {
+        to: destino,
+        value: ethers.parseEther(cantidadEth),
+        gasLimit: gasLimit,
+        gasPrice: gasPrice
+    };
+
+    try {
+        const response = await signer.sendTransaction(tx);
+        console.log("Transacción enviada con éxito:", response.hash);
+        return response.hash;
+    } catch (error: any) {
+        console.error("Error al enviar la transacción:", error);
+
+        const mensajeError = error?.reason || error?.message || "Error desconocido al enviar la transacción";
+        throw new Error(`Error al enviar la transacción: ${mensajeError}`);
+    }
+} 

@@ -3,13 +3,13 @@ import type { WalletInfo } from "../../types/WalletInfo";
 import { useEffect, useState } from "react";
 import Spinner from "./Spinner";
 import { useWallets } from "../../context/WalletContext";
-import { getMnemonic, getRedBtcSeleccionada } from "../../services/apiService";
+import { getMnemonic, getRedSeleccionada } from "../../services/apiService";
 import btcIcon from "../../assets/crypto/bitcoin.png";
 import ethIcon from "../../assets/crypto/ether.png";
 import QRCode from 'qrcode';
 import { useAuth } from "../../context/AuthContext";
 import { crearDireccionPublicaBtc } from "../../services/walletService";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Copy } from "lucide-react";
 
 function RecibirCrypto() {
     const location = useLocation();
@@ -18,10 +18,12 @@ function RecibirCrypto() {
     const [wallet, setWallet] = useState<WalletInfo | undefined>(location.state?.wallet);
     const { wallets } = useWallets();
     const [walletReceived, setWalletReceived] = useState<boolean>(false);
-    const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
+    const [redSeleccionada, setRedSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
+    const [direccionPublica, setDireccionPublica] = useState<string>("");
     const [qrBase64, setQrBase64] = useState<string>('');
+    const [copiado, setCopiado] = useState(false);
 
-    const walletsBTC = wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redBtcSeleccionada);
+    const walletsBTC = wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redSeleccionada);
     const walletsETH = wallets.filter(w => w.tipoMoneda === "ETH");
 
     useEffect(() => {
@@ -34,13 +36,13 @@ function RecibirCrypto() {
             setWalletReceived(false);
         } else {
             setWalletReceived(true);
-            if (!redBtcSeleccionada) return;
+            if (!redSeleccionada) return;
             handlePublicAddress();
         }
-    }, [wallet, redBtcSeleccionada]);
+    }, [wallet, redSeleccionada]);
 
     useEffect(() => {
-        const cargarRed = async () => setRedBtcSeleccionada(await getRedBtcSeleccionada());
+        const cargarRed = async () => setRedSeleccionada(await getRedSeleccionada());
         cargarRed();
     }, []);
 
@@ -53,6 +55,7 @@ function RecibirCrypto() {
         if (wallet?.tipoMoneda === 'BTC') {
             if (!password) return;
             try {
+                setDireccionPublica(wallet.direccionPublica);
                 const mnemonic = await getMnemonic(password);
                 await crearDireccionPublicaBtc(mnemonic, wallet);
             } catch (err) {
@@ -78,6 +81,12 @@ function RecibirCrypto() {
             return '';
         }
     }
+
+    const copiarDireccion = () => {
+        navigator.clipboard.writeText(wallet?.direccionPublica!);
+        setCopiado(true);
+        setTimeout(() => setCopiado(false), 1500);
+    };
 
     const resetVariables = () => {
         setWallet(undefined);
@@ -118,6 +127,12 @@ function RecibirCrypto() {
                     {w.red === "testnet" && (
                         <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
                         testnet
+                        </span>
+                    )}
+                    {/* Para ETH */}
+                    {w.tipoMoneda === "ETH" && redSeleccionada === 'testnet' && (
+                        <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
+                        testnet Sepolia
                         </span>
                     )}
                     </div>
@@ -183,24 +198,60 @@ function RecibirCrypto() {
                             className="w-10 h-10 select-none"
                         />
                         <h2 className="text-3xl font-bold">{wallet!.nombre}</h2>
+                        {wallet?.tipoDireccion === "native" && (
+                            <span className="text-green-500 text-xs border border-green-500 px-2 py-0.5 rounded-full font-medium">
+                            Native SegWit
+                            </span>
+                        )}
+                        {wallet?.tipoDireccion === "segwit" && (
+                            <span className="text-yellow-400 text-xs border border-yellow-400 px-2 py-0.5 rounded-full font-medium">
+                            SegWit
+                            </span>
+                        )}
+                        {wallet?.tipoDireccion === "legacy" && (
+                            <span className="text-red-400 text-xs border border-red-400 px-2 py-0.5 rounded-full font-medium">
+                            Legacy
+                            </span>
+                        )}
                         {wallet?.red === "testnet" && (
                             <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
                                 testnet
                             </span>
                         )}
+                        {/* Para ETH */}
+                        {wallet?.tipoMoneda === "ETH" && redSeleccionada === 'testnet' && (
+                            <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
+                            testnet Sepolia
+                            </span>
+                        )}
                     </div>
-
-                    <p className="text-base text-gray-300 break-words mb-5">
-                        {wallet!.direccionPublica}
-                    </p>
+                    <div className="flex items-center justify-center mb-5">
+                        <div
+                            className={`flex items-center border px-3 py-1 rounded-lg bg-neutral-800 transition-colors duration-300 ${
+                            copiado ? "border-green-500" : "border-gray-400"
+                            }`}
+                        >
+                            <p className="text-base text-gray-300 break-words">{direccionPublica}</p>
+                            <button
+                            onClick={copiarDireccion}
+                            className="ml-2 text-gray-400 cursor-pointer hover:text-white transition"
+                            >
+                            <Copy className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
 
                     <div className="flex justify-center items-center">
                         {qrBase64 === '' ? (
                         <Spinner size={32} />
                         ) : (
-                        <img src={qrBase64} alt="QR Wallet" className="w-70 h-70" />
+                        <img src={qrBase64} alt="QR Wallet" draggable="false" className="w-70 h-70" />
                         )}
                     </div>
+
+                    <p className="text-base text-gray-300">
+                        ¡Recuerde! Solo envíe fondos desde la red de {wallet?.tipoMoneda} a esta dirección
+                    </p>
                 </div>
             </div>
             )}

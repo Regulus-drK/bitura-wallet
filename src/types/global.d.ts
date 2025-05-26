@@ -24,11 +24,11 @@ declare global {
       setWalletConfigured: (value: boolean) => Promise<void>;
       onWalletConfigChange: (callback: (value: boolean) => void) => () => void;
       walletCheckAndNotify: (currentValue: boolean) => void;
-      getRedBtcSeleccionada: () => Promise<'mainnet' | 'testnet'>;
-      setRedBtcSeleccionada: (isTestnet: boolean) => Promise<boolean>;
+      getRedSeleccionada: () => Promise<'mainnet' | 'testnet'>;
+      setRedSeleccionada: (isTestnet: boolean) => Promise<boolean>;
       generateMnemonic: (numWords: '12' | '24') => Promise<string[]>;
       listarPrecios: () => Promise<CryptoAPIResponse>;
-      consultarDireccion: (direccion: string, pagina: string) => Promise<BtcResponse | EthResponse>;
+      consultarDireccion: (direccion: string, pagina: string, testnet?: boolean) => Promise<BtcResponse | EthResponse>;
       savePassword: (password: string) => Promise<void>;
       getPassword: () => Promise<string>;
       saveMnemonic: (mnemonic: string) => Promise<void>;

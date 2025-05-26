@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getRedBtcSeleccionada, setRedBtcSeleccionada } from "../../services/apiService";
+import { getRedSeleccionada, setRedSeleccionada } from "../../services/apiService";
 import Spinner from "../components/Spinner";
 
 function Ajustes() {
@@ -7,7 +7,7 @@ function Ajustes() {
 
     useEffect(() => {
         const redAlmacenada = async () => {
-            let redBtcSeleccionada = await getRedBtcSeleccionada();
+            let redBtcSeleccionada = await getRedSeleccionada();
 
             if (redBtcSeleccionada === 'mainnet') {
                 setAjusteTestnetActivo(false);
@@ -22,7 +22,7 @@ function Ajustes() {
         setAjusteTestnetActivo(prev => {
             if (prev === null) return false; // Por si se pulsa antes de cargar
             const nuevoValor = !prev;
-            setRedBtcSeleccionada(nuevoValor);
+            setRedSeleccionada(nuevoValor);
             return nuevoValor;
         });
     }
@@ -43,10 +43,10 @@ function Ajustes() {
             <div className="w-full max-w-5xl bg-neutral-700 rounded-xl p-4 flex items-center justify-between shadow-md mb-4">
                 <div className="flex flex-col text-left">
                     <span className="text-lg font-semibold text-white">
-                        Cambiar a red BTC Testnet
+                        Cambiar a red Testnet
                     </span>
                     <span className="text-sm text-gray-400">
-                        Cambia la red de Bitcoin de Mainnet a la de Testnet para realizar pruebas.
+                        Cambia la red seleccionada de la principal a la de Testnet para realizar pruebas
                     </span>
                 </div>
 

@@ -7,22 +7,23 @@ import ethIcon from "../../assets/crypto/ether.png";
 import BigNumber from "bignumber.js";
 import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
-import { getAllWallets, getMnemonic, getRedBtcSeleccionada, updateWallet } from "../../services/apiService";
+import { consultarDireccion, getAllWallets, getMnemonic, getRedSeleccionada, updateWallet } from "../../services/apiService";
 import { verificarFondosDireccionesBtc } from "../../services/walletService";
 import Spinner from "../components/Spinner";
+import { parseEthResponse, type EthResponse } from "../../types/EthBalance";
 
 function Cuentas() {
     const { password } = useAuth();
     const { wallets, setWallets } = useWallets();
     const [saldos, setSaldos] = useState<Record<string, BigNumber>>({});
     const navigate = useNavigate();
-    const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
+    const [redSeleccionada, setRedSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
 
     useEffect(() => {
-        const detectarRedBtcSeleccionada = async () => {
-            setRedBtcSeleccionada(await getRedBtcSeleccionada());
+        const detectarRedSeleccionada = async () => {
+            setRedSeleccionada(await getRedSeleccionada());
         }
-        detectarRedBtcSeleccionada();
+        detectarRedSeleccionada();
     }, []);
 
     useEffect(() => {
@@ -30,7 +31,7 @@ function Cuentas() {
             navigate("/");
             return;
         }
-        if (!redBtcSeleccionada) return;
+        if (!redSeleccionada) return;
 
         let isCancelled = false;
 
@@ -38,8 +39,8 @@ function Cuentas() {
 
             const mnemonic = await getMnemonic(password);
             
-            for (const wallet of wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redBtcSeleccionada)) {
-                const fondosBtc = await verificarFondosDireccionesBtc(mnemonic, wallet, redBtcSeleccionada);
+            for (const wallet of wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redSeleccionada)) {
+                const fondosBtc = await verificarFondosDireccionesBtc(mnemonic, wallet, redSeleccionada);
 
                 if (isCancelled) return;
 
@@ -60,19 +61,48 @@ function Cuentas() {
                 }
             }
         }
+
+        
+        const obtenerSaldoEth = async () => {
+            for (const wallet of wallets.filter(w => w.tipoMoneda === "ETH")) {
+                let testnet = redSeleccionada === 'testnet' ? true : false;
+                const result = await consultarDireccion(wallet.direccionPublica, '1', testnet);
+                
+                if (isCancelled) return;
+
+                if (result) {
+                    const fondosEth = parseEthResponse(result as EthResponse);
+
+                    setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosEth.balanceEth }));
+                    wallet.ultSaldoGuardado = fondosEth.balanceEth.toFixed(7);
+                    
+                    const walletActualizada = await updateWallet(wallet.nombre, wallet);
+
+                    if (walletActualizada) {
+                        const allWallets = await getAllWallets();
+                        setWallets(allWallets);
+                    } else {
+                        console.error('Error al actualizar la wallet en localStorage.');
+                    }
+                } else {
+                    console.error('Error cargando los saldos de ', wallet.nombre);
+                }
+            }
+        }
         obtenerSaldoBtc();
+        obtenerSaldoEth();
 
         return () => {
             isCancelled = true;
         };
-    }, [password, redBtcSeleccionada]);
+    }, [password, redSeleccionada]);
 
 
     const handleClickWallet = (wallet: WalletInfo) => {
         navigate('/inicio/cuentas/datos-cuenta', { state: { wallet } });
     };
 
-    const walletsBTC = wallets.filter(wallet => wallet.tipoMoneda === 'BTC' && wallet.red === redBtcSeleccionada);
+    const walletsBTC = wallets.filter(wallet => wallet.tipoMoneda === 'BTC' && wallet.red === redSeleccionada);
     const walletsETH = wallets.filter(wallet => wallet.tipoMoneda === 'ETH');
 
     return (
@@ -150,8 +180,23 @@ function Cuentas() {
                         <div className="flex items-center gap-3.5">
                             <img src={ethIcon} alt={wallet.nombre} draggable="false" className="w-6.5 h-6.5" />
                             <span className="font-medium text-lg">{wallet.nombre}</span>
+                            {redSeleccionada === "testnet" && 
+                            <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
+                                testnet Sepolia
+                            </span>
+                            }
                         </div>
-                        <span className="text-sm text-gray-300">0.000000 ETH</span>
+                        <span className="text-sm text-gray-300 flex items-center gap-1">
+                        {saldos[wallet.nombre] == null
+                            ? (
+                            <>
+                                <Spinner small size={16}/>
+                                <span>{wallet.ultSaldoGuardado} ETH</span>
+                            </>
+                            )
+                            : <span>{saldos[wallet.nombre].toFixed(7)} ETH</span>
+                        }
+                        </span>
                         </div>
                     </li>
                     ))}

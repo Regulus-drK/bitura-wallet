@@ -9,7 +9,7 @@ import { WalletStore, WalletInfo } from './WalletInfo.js';
 const store = new Store<WalletStore>({
   defaults: {
     walletConfigured: false,
-    redBtcSeleccionada: 'mainnet'
+    redSeleccionada: 'mainnet'
   }
 });
 
@@ -215,12 +215,15 @@ app.on("ready", () => {
         });
     });
 
-    ipcMain.handle('java:consultarDireccion', async (_event, direccion: string, pagina: string) => {
+    ipcMain.handle('java:consultarDireccion', async (_event, direccion: string, pagina: string, testnet?: boolean) => {
         return new Promise((resolve, reject) => {
             const javaPath = getJdkPath();
             const jarPath = getJarPath();
 
-            const proc = spawn(javaPath, ['-jar', jarPath, 'llamarAPI', 'consultarDireccion', direccion, pagina]);
+            let param = 'consultarDireccion';
+            if (testnet && testnet === true) param = 'consultarDireccionTESTNET';
+            
+            const proc = spawn(javaPath, ['-jar', jarPath, 'llamarAPI', param, direccion, pagina]);
             let output = '';
 
             proc.stdout.on('data', (data) => {
@@ -277,19 +280,19 @@ app.on("ready", () => {
         return true;
     });
 
-    ipcMain.handle('wallet:getRedBtcSeleccionada', () => {
-        let redSeleccionada = store.get('redBtcSeleccionada');
+    ipcMain.handle('wallet:getRedSeleccionada', () => {
+        let redSeleccionada = store.get('redSeleccionada');
         if (redSeleccionada !== 'mainnet' && redSeleccionada !== 'testnet') {
             redSeleccionada = 'mainnet';
         }
         return redSeleccionada;
     });
 
-    ipcMain.handle('wallet:setRedBtcSeleccionada', (_event, isTestnet: boolean) => {
+    ipcMain.handle('wallet:setRedSeleccionada', (_event, isTestnet: boolean) => {
         if (isTestnet) {
-            store.set('redBtcSeleccionada', 'testnet');
+            store.set('redSeleccionada', 'testnet');
         } else {
-            store.set('redBtcSeleccionada', 'mainnet');
+            store.set('redSeleccionada', 'mainnet');
         }
         return true;
     })

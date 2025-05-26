@@ -4,7 +4,7 @@ import { ArrowRight, CheckCircle, ChevronLeft, LogOut } from "lucide-react";
 import btcLogo from "../../assets/crypto/bitcoin.png";
 import ethLogo from "../../assets/crypto/ether.png";
 import { useNavigate } from "react-router-dom";
-import { getAllWallets, getMnemonic, getRedBtcSeleccionada } from "../../services/apiService";
+import { getAllWallets, getMnemonic, getRedSeleccionada } from "../../services/apiService";
 import { useAuth } from "../../context/AuthContext";
 import { crearYGuardarWalletBtc, crearYGuardarWalletEth } from "../../services/walletService";
 
@@ -23,7 +23,7 @@ function CuentasAgregar() {
 
     useEffect(() => {
         const detectarRedBtcSeleccionada = async () => {
-            setRedBtcSeleccionada(await getRedBtcSeleccionada());
+            setRedBtcSeleccionada(await getRedSeleccionada());
         }
         detectarRedBtcSeleccionada();
     }, []);

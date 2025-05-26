@@ -4,13 +4,14 @@ import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
 import type { WalletInfo } from "../../types/WalletInfo";
 import BigNumber from "bignumber.js";
-import { getAllWallets, getMnemonic, getRedBtcSeleccionada, listarPrecios, updateWallet } from "../../services/apiService";
-import { calcularEnvioTotal, enviarBtc, esDireccionBtcValida, esDireccionEthValida, verificarFondosDireccionesBtc } from "../../services/walletService";
+import { consultarDireccion, getAllWallets, getMnemonic, getRedSeleccionada as getRedSeleccionada, listarPrecios, updateWallet } from "../../services/apiService";
+import { calcularEnvioTotalBtc, calcularEnvioTotalEth, enviarBtc, enviarEth, esDireccionBtcValida, esDireccionEthValida, verificarFondosDireccionesBtc } from "../../services/walletService";
 import btcIcon from "../../assets/crypto/bitcoin.png";
 import ethIcon from "../../assets/crypto/ether.png";
 import Spinner from "../components/Spinner";
 import { ArrowLeft, ArrowRight, ArrowUp, CircleCheckBig, CircleX, House } from "lucide-react";
 import type { BtcAddressUtxo } from "../../types/BtcBalance";
+import { parseEthResponse, type EthResponse } from "../../types/EthBalance";
 
 function EnviarCrypto() {
     const location = useLocation();
@@ -20,7 +21,7 @@ function EnviarCrypto() {
     const [wallet, setWallet] = useState<WalletInfo | undefined>(location.state?.wallet);
     const [walletReceived, setWalletReceived] = useState<boolean>(false);
     const [saldos, setSaldos] = useState<Record<string, BigNumber | null>>({});
-    const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
+    const [redSeleccionada, setRedSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
     const [receiptAddress, setReceiptAddress] = useState<string>("");
     const [isValidAddress, setIsValidAddress] = useState<boolean | null>(null);
     const [isSameAddress, setIsSameAddress] = useState<boolean>(false);
@@ -31,6 +32,7 @@ function EnviarCrypto() {
     const [cantidadAenviarEur, setCantidadAenviarEur] = useState<number>(0);
     const [mostrarComision, setMostrarComision] = useState<boolean>(false);
     const [comision, setComision] = useState("");
+    const [gasLimit, setGasLimit] = useState<bigint>(1n); // Solo para ETH
     const [cantidadComisionEur, setCantidadComisionEur] = useState<number>(0);
 
     const [fondosBTC, setFondosBTC] = useState<BtcAddressUtxo[] | null>(null);
@@ -49,7 +51,7 @@ function EnviarCrypto() {
     });
     const [txError, setTxError] = useState<string>("");
 
-    const walletsBTC = wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redBtcSeleccionada);
+    const walletsBTC = wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redSeleccionada);
     const walletsETH = wallets.filter(w => w.tipoMoneda === "ETH");
 
     useEffect(() => {
@@ -62,7 +64,7 @@ function EnviarCrypto() {
     }, [wallet]);
 
     useEffect(() => {
-        const cargarRed = async () => setRedBtcSeleccionada(await getRedBtcSeleccionada());
+        const cargarRed = async () => setRedSeleccionada(await getRedSeleccionada());
         cargarRed();
     }, []);
 
@@ -72,16 +74,16 @@ function EnviarCrypto() {
             return;
         }
 
-        if (!redBtcSeleccionada) return;
+        if (!redSeleccionada) return;
 
         let cancelado = false;
 
-        const obtenerSaldos = async () => {
+        const obtenerSaldosBtc = async () => {
             if (!password) return;
             const mnemonic = await getMnemonic(password);
 
             for (const w of walletsBTC) {
-                const result = await verificarFondosDireccionesBtc(mnemonic, w, redBtcSeleccionada);
+                const result = await verificarFondosDireccionesBtc(mnemonic, w, redSeleccionada);
                 if (cancelado) return;
 
                 if (result) {
@@ -100,17 +102,41 @@ function EnviarCrypto() {
                     console.error('Error cargando los saldos de ', w.nombre)
                 }
             }
+        };
 
+        const obtenerSaldosEth = async () => {
             for (const w of walletsETH) {
-                const saldoETH = new BigNumber(0); // Placeholder
-                setSaldos(prev => ({ ...prev, [w.nombre]: saldoETH }));
+                let testnet = redSeleccionada === 'testnet' ? true : false;
+                const result = await consultarDireccion(w.direccionPublica, '1', testnet);
+                
+                if (cancelado) return;
+
+                if (result) {
+                    const fondosEth = parseEthResponse(result as EthResponse);
+                    setSaldos(prev => ({ ...prev, [w.nombre]: fondosEth.balanceEth }));
+                    w.ultSaldoGuardado = fondosEth.balanceEth.toFixed(7);
+                    
+                    const walletActualizada = await updateWallet(w.nombre, w);
+
+                    if (walletActualizada) {
+                        const allWallets = await getAllWallets();
+                        setWallets(allWallets);
+                    } else {
+                        console.error('Error al actualizar la wallet en localStorage.');
+                    }
+                } else {
+                    console.error('Error cargando los saldos de ', w.nombre);
+                }
             }
         };
 
-        if (!wallet) obtenerSaldos();
+        if (!wallet) {
+            obtenerSaldosBtc();
+            obtenerSaldosEth();
+        }
 
         return () => { cancelado = true };
-    }, [password, redBtcSeleccionada]);
+    }, [password, redSeleccionada, wallet]);
 
     // Efecto para calcular las conversiones cuando se modifique el valor de la variable
     useEffect(() => {
@@ -130,7 +156,7 @@ function EnviarCrypto() {
             return;
         }
         if (wallet?.tipoMoneda === "BTC") {
-            const valido = esDireccionBtcValida(receiptAddress, redBtcSeleccionada!);
+            const valido = esDireccionBtcValida(receiptAddress, redSeleccionada!);
             if (!valido) {
                 setIsValidAddress(false);
                 return;
@@ -148,7 +174,7 @@ function EnviarCrypto() {
             setIsValidAddress(true);
             await cargarPreciosCrypto();
             reconsultarSaldoCuentaSelec(wallet!);
-            setComision("5000000"); // TODO: Verificar esto
+            setComision("500000"); // TODO: Comprobar (si eso en mainnet) que funciona bien
         }
     };
 
@@ -158,7 +184,7 @@ function EnviarCrypto() {
 
         if (wallet.tipoMoneda === 'BTC') {
             try {
-                const result = await verificarFondosDireccionesBtc(mnemonic, wallet, redBtcSeleccionada!);
+                const result = await verificarFondosDireccionesBtc(mnemonic, wallet, redSeleccionada!);
                 if (result) {
                     setSaldos(prev => ({ ...prev, [wallet.nombre]: result ? result.totalBtc : null }));
                     setFondosBTC(result.direccionesConFondos);
@@ -170,9 +196,24 @@ function EnviarCrypto() {
                 console.error('Error comprobando saldos: ', err);
                 return;
             }
-        } else {
+        } else { // Caso ETH
+            try {
+                let testnet = redSeleccionada === 'testnet' ? true : false;
+                const result = await consultarDireccion(wallet.direccionPublica, '1', testnet);
+                
+                if (result) {
+                    const fondosEth = parseEthResponse(result as EthResponse);
 
-        }
+                    setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosEth.balanceEth }));   
+                    setSaldoWalletComprobado(true);
+                    return;               
+                }
+                setSaldoWalletComprobado(false);
+            } catch (err) {
+                console.error('Error comprobando saldos: ', err);
+                return;
+            }
+        } 
     }
 
     const cargarPreciosCrypto = async () => {
@@ -210,7 +251,7 @@ function EnviarCrypto() {
     const handleEnviarTodo = async () => {
         if (wallet?.tipoMoneda === 'BTC') {
             try {
-                const resultado = await calcularEnvioTotal(fondosBTC!, receiptAddress, redBtcSeleccionada!);
+                const resultado = await calcularEnvioTotalBtc(fondosBTC!, receiptAddress, redSeleccionada!);
                 if (resultado) {
                     const SATOSHIS_IN_BTC = new BigNumber(1e8);
                     setCantidadAenviar(resultado.cantidadEnviar.dividedBy(SATOSHIS_IN_BTC).toString());
@@ -220,6 +261,22 @@ function EnviarCrypto() {
                 console.error('Error al ajustar enviar todo BTC: ', err);
                 setFalloAlCalcularFee(true);
             }
+        } else {
+            try {
+                if (!password) return;
+                const mnemonic = await getMnemonic(password);
+
+                if (!mnemonic) return;
+                const resultado = await calcularEnvioTotalEth(
+                    wallet!, mnemonic, redSeleccionada!, wallet?.ultSaldoGuardado!);
+                if (resultado) {
+                    setCantidadAenviar(resultado.cantidadEnviar.toString());
+                    setComision(resultado.feeGwei);
+                }
+            } catch (err) {
+                console.error('Error al ajustar enviar todo ETH: ', err);
+                setFalloAlCalcularFee(true);
+            }
         }
     }
 
@@ -227,9 +284,28 @@ function EnviarCrypto() {
         if (wallet?.tipoMoneda === 'BTC') {
             if (Number(cantidadAenviar) * 1 === 0) return;
             try {
-                const resultado = await calcularEnvioTotal(fondosBTC!, receiptAddress, redBtcSeleccionada!, Number(cantidadAenviar));
+                const resultado = await calcularEnvioTotalBtc(fondosBTC!, receiptAddress, redSeleccionada!, Number(cantidadAenviar));
                 if (resultado) {
                     setComision(resultado.feeReal.toString());
+                    setFalloAlCalcularFee(false);
+                }
+            } catch (err) {
+                console.error('Error al calcular fee automáticamente: ', err);
+                setFalloAlCalcularFee(true);
+            }
+        } else {
+            if (Number(cantidadAenviar) * 1 === 0) return;
+            try {
+                if (!password) return;
+                const mnemonic = await getMnemonic(password);
+
+                if (!mnemonic) return;
+                const resultado = await calcularEnvioTotalEth(
+                    wallet!, mnemonic, redSeleccionada!, cantidadAenviar);
+                if (resultado) {
+                    setComision(resultado.feeGwei);
+                    setGasLimit(resultado.gasLimit);
+                    setFalloAlCalcularFee(false);
                 }
             } catch (err) {
                 console.error('Error al calcular fee automáticamente: ', err);
@@ -239,33 +315,32 @@ function EnviarCrypto() {
     }
 
     const comprobarSaldoAEnviar = () => {
-        if (wallet?.tipoMoneda === 'BTC') {
-            let comisionEnBTC = new BigNumber(Number(comision) / 100_000_000);
-            let cantidadAEnviarBN = new BigNumber(Number(cantidadAenviar));
-            let saldoActual = saldos[wallet.nombre];
-            
-            if (!saldoActual) return;
+        let valorConversion = wallet!.tipoMoneda === 'BTC' ? 100_000_000 : 1_000_000_000;
+        let comisionConvertida = new BigNumber(Number(comision) / valorConversion);
+        let cantidadAEnviarBN = new BigNumber(Number(cantidadAenviar));
+        let saldoActual = saldos[wallet!.nombre];
+        
+        if (!saldoActual) return;
 
-            // ¿Saldo sin fee suficiente?
-            if (saldoActual.minus(cantidadAEnviarBN).isLessThan(0)) {
-                setSaldoInsuficiente(true);
-                return;
-            }
-
-            let totalAEnviar: BigNumber = comisionEnBTC.plus(cantidadAEnviarBN);
-
-            let restoSaldo = saldoActual.minus(totalAEnviar);
-
-            // Menor o igual
-            // ¿Saldo con fee suficiente?
-            if (restoSaldo.isLessThan(0)) {
-                setSaldoConFeeInsuficiente(true);
-                return;
-            }
-
-            setSaldoConFeeInsuficiente(false);
-            setSaldoInsuficiente(false);
+        // ¿Saldo sin fee suficiente?
+        if (saldoActual.minus(cantidadAEnviarBN).isLessThan(0)) {
+            setSaldoInsuficiente(true);
+            return;
         }
+
+        let totalAEnviar: BigNumber = comisionConvertida.plus(cantidadAEnviarBN);
+
+        let restoSaldo = saldoActual.minus(totalAEnviar);
+
+        // Menor o igual
+        // ¿Saldo con fee suficiente?
+        if (restoSaldo.isLessThan(0)) {
+            setSaldoConFeeInsuficiente(true);
+            return;
+        }
+
+        setSaldoConFeeInsuficiente(false);
+        setSaldoInsuficiente(false);
     }
 
     const ventanaCantidadAEnviar = () => {
@@ -290,13 +365,42 @@ function EnviarCrypto() {
         if (wallet?.tipoMoneda === 'BTC') {
             try {
                 const txBtc = await enviarBtc(
-                    fondosBTC!, receiptAddress, Number(cantidadAenviar), redBtcSeleccionada!, BigNumber(Number(comision)));
+                    fondosBTC!, receiptAddress, Number(cantidadAenviar), redSeleccionada!, BigNumber(Number(comision)));
                 if (txBtc) {
                     setTxInfo(txBtc);
                     console.log(`Éxito, Input: ${txBtc.totalInput}\nOutput: ${txBtc.totalOutput}\nFee: ${txBtc.fee}\nTxid: ${txBtc.txid}\nRawTx: ${txBtc.rawTx}`)
                     setIsTransactionSuccessful(true);
                 } else {
                     console.error('Fallo al enviar BTC.')
+                    setIsTransactionSuccessful(false);
+                }
+            } catch (err) {
+                const mensaje = err instanceof Error ? err.message : String(err);
+                console.error('Error al realizar la transacción: ', mensaje);
+                setTxError(mensaje);
+                setIsTransactionSuccessful(false);
+            }
+        } else {
+            try {
+                if (!password) return;
+
+                const mnemonic = await getMnemonic(password);
+                if (!mnemonic) return;
+                const txEth = await enviarEth(wallet!, mnemonic, receiptAddress, 
+                    cantidadAenviar, redSeleccionada!, BigInt(comision), gasLimit);
+                if (txEth) {
+                    let txEthInfo = {
+                        txid: txEth,
+                        rawTx: '',
+                        totalInput: new BigNumber(cantidadAenviar),
+                        totalOutput: 0,
+                        fee: new BigNumber(comision).dividedBy(1_000_000_000)
+                    };
+                    setTxInfo(txEthInfo);
+                    console.log(`Éxito, Input: ${txEthInfo.totalInput}\nOutput: ${txEthInfo.totalOutput}\nFee: ${txEthInfo.fee}\nTxid: ${txEthInfo.txid}`)
+                    setIsTransactionSuccessful(true);
+                } else {
+                    console.error('Fallo al enviar ETH.')
                     setIsTransactionSuccessful(false);
                 }
             } catch (err) {
@@ -366,6 +470,12 @@ function EnviarCrypto() {
                     {w.red === "testnet" && (
                         <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
                         testnet
+                        </span>
+                    )}
+                    {/* Para ETH */}
+                    {w.tipoMoneda === "ETH" && redSeleccionada === 'testnet' && (
+                        <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
+                        testnet Sepolia
                         </span>
                     )}
                     </div>
@@ -460,10 +570,16 @@ function EnviarCrypto() {
                                         testnet
                                     </span>
                                 )}
+                                {/* Para ETH */}
+                                {wallet?.tipoMoneda === "ETH" && redSeleccionada === 'testnet' && (
+                                    <span className="text-yellow-500 text-xs border border-yellow-500 px-2 py-0.5 rounded-full font-medium">
+                                    testnet Sepolia
+                                    </span>
+                                )}
                             </div>
                             <p className="text-md font-medium text-gray-300">
                                 Saldo: {saldos[wallet!.nombre] ? saldos[wallet!.nombre]?.toFixed(7) : wallet?.ultSaldoGuardado} {wallet?.tipoMoneda} {' '}
-                                ≈ {precioActCrypto !== 0 ? (saldos[wallet!.nombre]?.multipliedBy(precioActCrypto).toFixed(2)) : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
+                                ≈ {precioActCrypto ? ((Number(wallet?.ultSaldoGuardado) * precioActCrypto).toFixed(2)) : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
                             </p>
                         </div>
 
@@ -483,7 +599,7 @@ function EnviarCrypto() {
                                             setIsValidAddress(null);
                                             setIsSameAddress(false);
                                         }}
-                                        className={`w-full max-w-[425px] bg-neutral-800 hover:bg-neutral-900
+                                        className={`w-full max-w-[455px] bg-neutral-800 hover:bg-neutral-900
                                          text-white font-semibold py-1 px-6 rounded-xl shadow-md
                                          transition duration-300 ${
                                             isValidAddress === false || isSameAddress ? "border-red-500 border-2" : "border-gray-500 border"
@@ -537,6 +653,7 @@ function EnviarCrypto() {
                                                     setSaldoInsuficiente(null);
                                                     setSaldoConFeeInsuficiente(null);
                                                     handleCalcularComisionAuto();
+                                                    setFalloAlCalcularFee(false);
                                                 }}
                                                 className={`w-full max-w-[205px] bg-neutral-800 hover:bg-neutral-900
                                                 text-white font-semibold py-1 px-3 rounded-xl shadow-md
@@ -593,6 +710,7 @@ function EnviarCrypto() {
                                                     setComision(e.target.value);
                                                     setSaldoInsuficiente(null);
                                                     setSaldoConFeeInsuficiente(null);
+                                                    setFalloAlCalcularFee(false);
                                                 }}
                                                 className={`w-full max-w-[140px] bg-neutral-800 hover:bg-neutral-900
                                                  text-white font-semibold py-1 px-3 rounded-xl shadow-md
@@ -640,6 +758,11 @@ function EnviarCrypto() {
                                 {saldoConFeeInsuficiente && (
                                     <h2 className="text-center mt-4 text-lg font-semibold text-red-500 select-none">
                                         Saldo insuficiente, debe tener saldo disponible para pagar la comisión de red
+                                    </h2>
+                                )}
+                                {falloAlCalcularFee && (
+                                    <h2 className="text-center mt-4 text-lg font-semibold text-red-500 select-none">
+                                        Ha ocurrido un fallo al calcular el fee. Si el error persiste, puede que sea porque la comisión de red sea más alta que su saldo.
                                     </h2>
                                 )}
                             </>
@@ -705,7 +828,7 @@ function EnviarCrypto() {
                             <span className="text-lg font-semibold">ID de la transacción:</span>
                             {wallet?.tipoMoneda === 'BTC' ? 
                                 <a
-                                    href={`https://mempool.space/${redBtcSeleccionada === 'mainnet' ? '' : 'testnet/'}tx/${txInfo.txid}`}
+                                    href={`https://mempool.space/${redSeleccionada === 'mainnet' ? '' : 'testnet/'}tx/${txInfo.txid}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-400 underline hover:text-blue-300 transition"
@@ -714,10 +837,9 @@ function EnviarCrypto() {
                                 </a>
 
                             :
-                            
-                                // Poner aquí lo necesario para ETH
+                                // ETH
                                 <a
-                                    href={`https://mempool.space/${redBtcSeleccionada === 'mainnet' ? '' : 'testnet/'}tx/${txInfo.txid}`}
+                                    href={`https://${redSeleccionada === 'mainnet' ? 'etherscan.io' : 'sepolia.etherscan.io'}/tx/${txInfo.txid}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-400 underline hover:text-blue-300 transition"

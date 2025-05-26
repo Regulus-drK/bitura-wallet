@@ -31,14 +31,14 @@ contextBridge.exposeInMainWorld('api', {
             ipcRenderer.off('wallet:configChanged', listener);
         };
     },
-    getRedBtcSeleccionada: () => ipcRenderer.invoke('wallet:getRedBtcSeleccionada'),
-    setRedBtcSeleccionada: (isTestnet: boolean) => {
-        ipcRenderer.invoke("wallet:setRedBtcSeleccionada", isTestnet);
+    getRedSeleccionada: () => ipcRenderer.invoke('wallet:getRedSeleccionada'),
+    setRedSeleccionada: (isTestnet: boolean) => {
+        ipcRenderer.invoke("wallet:setRedSeleccionada", isTestnet);
     },
     // Llamadas API Java
     generateMnemonic: async (args: string) => ipcRenderer.invoke('java:generateMnemonic', args),
     listarPrecios: async () => ipcRenderer.invoke('java:listarPrecios'),
-    consultarDireccion: (direccion: string, pagina: string) => ipcRenderer.invoke('java:consultarDireccion', direccion, pagina),
+    consultarDireccion: (direccion: string, pagina: string, testnet?: boolean) => ipcRenderer.invoke('java:consultarDireccion', direccion, pagina, testnet),
     // Fin Llamadas API Java
     savePassword: (password: string) => ipcRenderer.invoke('wallet:savePassword', password),
     // getPassword: () => ipcRenderer.invoke('wallet:getPassword'), // Desactivados para el front (de momento, al menos)
