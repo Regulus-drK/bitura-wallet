@@ -445,8 +445,8 @@ export async function obtenerTxsBtc(
         }
     };
 
-    await escanear(0); // Direcciones externas
     await escanear(1); // Direcciones de cambio
+    await escanear(0); // Direcciones externas
 
     resultados.sort((a, b) => {
         if (!a.status.confirmed && b.status.confirmed) return 1;

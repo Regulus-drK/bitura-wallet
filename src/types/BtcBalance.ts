@@ -165,14 +165,21 @@ export function formatTxsBtc(
       sequence: vin.sequence,
       inner_redeemscript_asm: vin.inner_redeemscript_asm,
     })),
-    vout: tx.vout.map((vout) => ({
-      scriptpubkey: vout.scriptpubkey,
-      scriptpubkey_asm: vout.scriptpubkey_asm,
-      scriptpubkey_type: vout.scriptpubkey_type,
-      scriptpubkey_address: vout.scriptpubkey_address,
-      valueBtc: satoshisToBtc(vout.value),
-      esCambio: direccionesCambio.has(vout.scriptpubkey_address ?? ''),
-    })),
+    vout: tx.vout.map((vout) => {
+      console.log('Direccion actual: ', direccionPublica)
+      console.log('Set contiene:', [...direccionesCambio]);
+      console.log('Comparando con:', vout.scriptpubkey_address);
+      console.log('¿Está en el Set?', direccionesCambio.has(vout.scriptpubkey_address ?? ''));
+
+      return {
+        scriptpubkey: vout.scriptpubkey,
+        scriptpubkey_asm: vout.scriptpubkey_asm,
+        scriptpubkey_type: vout.scriptpubkey_type,
+        scriptpubkey_address: vout.scriptpubkey_address,
+        valueBtc: satoshisToBtc(vout.value),
+        esCambio: direccionesCambio.has(vout.scriptpubkey_address ?? ''),
+      };
+    }),
     size: tx.size,
     weight: tx.weight,
     sigops: tx.sigops,

@@ -282,7 +282,7 @@ function CuentaDatos() {
               </h3>
             </div>
           ) : (
-            <div className="flex items-center justify-center h-25">
+            <div className="flex items-center justify-center h-25 select-none">
               <Spinner />
             </div>
           )}
@@ -319,7 +319,7 @@ function CuentaDatos() {
       <div className="bg-neutral-700 shadow rounded-xl p-4">
         <h3 className="text-xl font-semibold mb-4">Transacciones</h3>
         {!isTxsLoaded ? (
-          <div className="flex items-center justify-center h-25">
+          <div className="h-20 inset-0 flex items-center justify-center pointer-events-none">
             <Spinner />
           </div>
         ) : (
@@ -333,10 +333,13 @@ function CuentaDatos() {
                   const direccion = tx.address;
                   const recibido = tx.vout.some(vout => vout.scriptpubkey_address === direccion);
                   const enviado = tx.vin.some(vin => vin.prevout.scriptpubkey_address === direccion);
-                  const hayCambio = tx.vout.some(vout => vout.esCambio);
+                  const hayCambio = tx.vout.some(vout => vout.scriptpubkey_address === direccion && vout.esCambio);
 
-                  const tipo = recibido && enviado
-                    ? (hayCambio ? "Cambio" : "Enviado a uno mismo")
+                  // Prioriza "Transferencia interna"
+                  const tipo = hayCambio
+                    ? "Transferencia interna"
+                    : recibido && enviado
+                    ? "Enviado a uno mismo"
                     : recibido
                     ? "Recibido"
                     : "Enviado";
@@ -361,7 +364,12 @@ function CuentaDatos() {
                       ? tx.vout
                           .filter(vout => vout.scriptpubkey_address === direccion)
                           .reduce((sum, v) => sum + Number(v.valueBtc), 0)
-                      : tx.vin
+                    : tipo === "Transferencia interna"
+                      ? tx.vout
+                          .filter(vout => vout.scriptpubkey_address === direccion && vout.esCambio)
+                          .reduce((sum, v) => sum + Number(v.valueBtc), 0)
+                    : // Enviado y Enviado a uno mismo
+                      tx.vin
                           .filter(vin => vin.prevout.scriptpubkey_address === direccion)
                           .reduce((sum, v) => sum + Number(v.prevout.valueBtc), 0);
 
@@ -380,7 +388,7 @@ function CuentaDatos() {
                         <div className="flex items-center gap-3">
                           {icon}
                           <span className="font-semibold text-white">{tipo}</span>
-                          {tipo === "Cambio" && (
+                          {tipo === "Transferencia interna" && (
                             <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-600 text-white rounded-full">
                               Cambio
                             </span>
@@ -414,17 +422,23 @@ function CuentaDatos() {
                       <div className="flex justify-between text-sm">
                         <div
                           className={`${
-                            tipo === "Enviado" ? "text-red-400" : tipo === "Cambio" ? "text-yellow-400" : "text-green-500"
+                            tipo === "Enviado"
+                              ? "text-red-400"
+                              : tipo === "Transferencia interna"
+                              ? "text-yellow-400"
+                              : "text-green-500"
                           }`}
                         >
                           {tipo === "Enviado" ? "-" : "+"}
                           {valorTotal.toFixed(7)} BTC ≈{" "}
                           {(valorTotal * precioActCrypto).toFixed(2)} EUR
                         </div>
-                        <div>
-                          <strong>Fee:</strong> {tx.feeBtc} BTC ≈{" "}
-                          {(Number(tx.feeBtc) * precioActCrypto).toFixed(2)} EUR
-                        </div>
+                        {tipo !== "Transferencia interna" && (
+                          <div>
+                            <strong>Fee:</strong> {tx.feeBtc} BTC ≈{" "}
+                            {(Number(tx.feeBtc) * precioActCrypto).toFixed(2)} EUR
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
