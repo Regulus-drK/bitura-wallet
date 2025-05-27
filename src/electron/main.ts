@@ -25,7 +25,7 @@ function createMainWindow(): BrowserWindow {
             preload: isDev()
                 ? path.join(process.cwd(), 'dist-electron', 'preload.js')
                 : path.join(app.getAppPath(), 'dist-electron', 'preload.js'),
-            partition: 'persist:default',
+            // partition: 'persist:default',
             webSecurity: false
         }
     });
@@ -61,6 +61,8 @@ app.on("ready", () => {
         app.quit();
         return;
     }
+
+    // app.commandLine.appendSwitch('disable-features', 'SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure');
 
     // Creamos la ventana principal
     createMainWindow();

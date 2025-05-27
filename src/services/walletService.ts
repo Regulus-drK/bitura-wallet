@@ -8,7 +8,7 @@ import BigNumber from "bignumber.js";
 import { Buffer } from 'buffer';
 import type { WalletInfo } from '../types/WalletInfo';
 import { addWallet, updateWallet } from './apiService';
-import { type BtcAddressUtxo} from '../types/BtcBalance';
+import { formatTxsBtc, type BtcAddressUtxo, type BtcTransactionFormatted, type BtcTransactionRaw} from '../types/BtcBalance';
 
 // Crear instancia de bip32 con tiny-secp256k1
 const bip32 = BIP32Factory(ecc);
@@ -343,6 +343,132 @@ export async function verificarFondosDireccionesBtc(
   };
 }
 
+export async function obtenerTxsBtc(
+  mnemonic: string | null,
+  wallet: WalletInfo,
+  redSeleccionada: 'mainnet' | 'testnet'
+): Promise<BtcTransactionFormatted[] | undefined> {
+    if (!mnemonic || !validarMnemonic(mnemonic)) {
+        console.error("Mnemonic inválido.");
+        return;
+    }
+
+    const testnet = redSeleccionada === 'testnet';
+    const binSeed = bip39.mnemonicToSeedSync(mnemonic);
+    const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+    const apiBase = testnet ? "https://mempool.space/testnet/api" : "https://mempool.space/api";
+    const root = bip32.fromSeed(binSeed, network);
+    const pathBase = wallet.pathBase.replace(/\/[0-1]\/\d+$/, '');
+
+    const metodoBtc = (() => {
+        switch (wallet.tipoDireccion) {
+        case 'legacy': return bitcoin.payments.p2pkh;
+        case 'segwit':
+            return (args: bitcoin.payments.Payment) =>
+            bitcoin.payments.p2sh({
+                redeem: bitcoin.payments.p2wpkh(args),
+                network: args.network,
+            });
+        case 'native':
+        default: return bitcoin.payments.p2wpkh;
+        }
+    })();
+
+    const resultados: BtcTransactionFormatted[] = [];
+    const direccionesCambio = new Set<string>();
+
+    const escanear = async (cambio: number) => {
+        let index = 0;
+        let vaciasConsecutivas = 0;
+        const BATCH_SIZE = 20;
+
+        while (vaciasConsecutivas < 20) {
+            const batch: { path: string; address: string }[] = [];
+
+            for (let i = 0; i < BATCH_SIZE; i++) {
+                const fullPath = `${pathBase}/${cambio}/${index + i}`;
+                const child = root.derivePath(fullPath);
+                const { address } = metodoBtc({ pubkey: Buffer.from(child.publicKey), network });
+
+                if (address) {
+                    batch.push({ path: fullPath, address });
+                }
+
+                if (cambio === 1 && address) {
+                    direccionesCambio.add(address);
+                }
+            }
+
+            const respuestas = await Promise.allSettled(
+                batch.map(dir =>
+                fetch(`${apiBase}/address/${dir.address}/txs`)
+                    .then(r => {
+                    if (!r.ok) throw new Error(`Error en fetch para ${dir.address}: ${r.statusText}`);
+                        return r.json();
+                    })
+                )
+            );
+
+            let encontradasEnBatch = 0;
+            console.log([...direccionesCambio])
+
+            for (let i = 0; i < respuestas.length; i++) {
+                const respuesta = respuestas[i];
+                const address = batch[i].address;
+
+                if (respuesta.status === "fulfilled") {
+                    const txsRaw: BtcTransactionRaw[] = respuesta.value;
+
+                    if (txsRaw.length > 0) {
+                        vaciasConsecutivas = 0;
+                        encontradasEnBatch++;
+
+                        const txsFormateadas = formatTxsBtc(txsRaw, address, batch[i].path, direccionesCambio);
+
+                        resultados.push(...txsFormateadas);
+
+                        console.log(`✔ Actividad en ${address}, (${batch[i].path}) txs: ${txsFormateadas.length}`);
+                    } else {
+                        vaciasConsecutivas++;
+                    }
+                } else {
+                    vaciasConsecutivas++;
+                    console.error("Error en fetch de txs:", respuesta.reason);
+                }
+            }
+
+            if (encontradasEnBatch === 0) {
+                vaciasConsecutivas += BATCH_SIZE;
+            }
+
+            index += BATCH_SIZE;
+        }
+    };
+
+    await escanear(0); // Direcciones externas
+    await escanear(1); // Direcciones de cambio
+
+    resultados.sort((a, b) => {
+        if (!a.status.confirmed && b.status.confirmed) return 1;
+        if (a.status.confirmed && !b.status.confirmed) return -1;
+
+        const alturaA = a.status.block_height ?? 0;
+        const alturaB = b.status.block_height ?? 0;
+
+        return alturaB - alturaA;
+    });
+
+    resultados.forEach(r => {
+        console.log('Direccion: ', r.address)
+        r.vout.forEach(r => {
+            console.log('Destino: ', r.scriptpubkey_address)
+            console.log(r.esCambio)
+            console.log('-------------------------------')
+        })
+    })
+
+    return resultados;
+}
 
 export function esDireccionBtcValida(address: string, redSeleccionada: 'mainnet' | 'testnet'): boolean {
     let testnet = false;
@@ -978,7 +1104,7 @@ export async function enviarEth(
 
     try {
         const response = await signer.sendTransaction(tx);
-        await response.wait();
+        await response.wait(1, 90000);
         console.log("Transacción enviada con éxito:", response.hash);
         return response.hash;
     } catch (error: any) {

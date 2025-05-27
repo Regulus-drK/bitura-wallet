@@ -34,13 +34,13 @@ function EnviarCrypto() {
     const [mostrarComision, setMostrarComision] = useState<boolean>(false);
     const [comision, setComision] = useState("");
     const [gasLimit, setGasLimit] = useState<bigint>(1n); // Solo para ETH
-    const [ethFee, setEthFee] = useState<string>("");
+    const [ethFee, setEthFee] = useState<string>(""); // Solo para ETH
     const [cantidadComisionEur, setCantidadComisionEur] = useState<number>(0);
 
     const [fondosBTC, setFondosBTC] = useState<BtcAddressUtxo[] | null>(null);
     const [saldoInsuficiente, setSaldoInsuficiente] = useState<boolean | null>(null);
     const [saldoConFeeInsuficiente, setSaldoConFeeInsuficiente] = useState<boolean | null>(null);
-    // TODO: Mostrar error de fallo al calcular el fee y dar motivo
+    const [feeMuyAltoDetectado, setFeeMuyAltoDetectado] = useState<boolean>(false);
     const [falloAlCalcularFee, setFalloAlCalcularFee] = useState<boolean>(false);
     const [shouldExecuteTransaction, setShouldExecuteTransaction ] = useState<boolean>(false);
     const [isTransactionSuccessful, setIsTransactionSuccessful] = useState<boolean | null>(null);
@@ -142,6 +142,10 @@ function EnviarCrypto() {
 
     // Efecto para calcular las conversiones cuando se modifique el valor de la variable
     useEffect(() => {
+        if (!saldos[wallet?.nombre!] || !wallet) return;
+        if (comision === "" || comision === undefined) setComision('1');
+
+        comprobarSaldoAEnviar();
         calcularConversionEur();
     }, [cantidadAenviar, comision]);
 
@@ -176,7 +180,7 @@ function EnviarCrypto() {
             setIsValidAddress(true);
             await cargarPreciosCrypto();
             reconsultarSaldoCuentaSelec(wallet!);
-            setComision("1000000");
+            setComision("200000000");
         }
     };
 
@@ -247,6 +251,11 @@ function EnviarCrypto() {
                 ? (fee / 100_000_000) * precioActCrypto
                 : (Number(ethFee)) * precioActCrypto;
             setCantidadComisionEur(feeEur);
+            if (feeEur > 30) {
+                setFeeMuyAltoDetectado(true);
+            } else {
+                setFeeMuyAltoDetectado(false);
+            }
         }
     }
 
@@ -272,6 +281,7 @@ function EnviarCrypto() {
                 const resultado = await calcularEnvioTotalEth(
                     wallet!, mnemonic, receiptAddress, redSeleccionada!, saldos[wallet!.nombre]!.toString());
                 if (resultado) {
+                    setSaldoConFeeInsuficiente(null);
                     setCantidadAenviar(resultado.cantidadEnviar);
                     setComision(resultado.gasPrice);
                     setGasLimit(resultado.gasLimit);
@@ -284,11 +294,12 @@ function EnviarCrypto() {
         }
     }
 
-    const handleCalcularComisionAuto = async () => {
+    const handleCalcularComisionAuto = async (cantidad: string) => {
         if (wallet?.tipoMoneda === 'BTC') {
-            if (Number(cantidadAenviar) * 1 === 0) return;
+            if (Number(cantidad) * 1 === 0 ||
+            BigNumber(cantidad).isGreaterThan(saldos[wallet?.nombre!]!)) return;
             try {
-                const resultado = await calcularEnvioTotalBtc(fondosBTC!, receiptAddress, redSeleccionada!, Number(cantidadAenviar));
+                const resultado = await calcularEnvioTotalBtc(fondosBTC!, receiptAddress, redSeleccionada!, Number(cantidad));
                 if (resultado) {
                     setComision(resultado.feeReal.toString());
                     setFalloAlCalcularFee(false);
@@ -298,17 +309,20 @@ function EnviarCrypto() {
                 setFalloAlCalcularFee(true);
             }
         } else {
-            if (Number(cantidadAenviar) * 1 === 0) return;
+            if (Number(cantidad) * 1 === 0 || 
+            BigNumber(cantidad).isGreaterThan(saldos[wallet?.nombre!]!)) return;
+
             try {
                 if (!password) return;
                 const mnemonic = await getMnemonic(password);
 
                 if (!mnemonic) return;
                 const resultado = await calcularEnvioTotalEth(
-                    wallet!, mnemonic, receiptAddress, redSeleccionada!, cantidadAenviar);
+                    wallet!, mnemonic, receiptAddress, redSeleccionada!, cantidad);
                 if (resultado) {
                     setComision(resultado.gasPrice);
                     setGasLimit(resultado.gasLimit);
+                    // Cálculo para transformar wei a Eth y mostrarlo después el fee
                     setEthFee(ethers.formatEther(Number(resultado.gasPrice) * Number(resultado.gasLimit)));
                     setFalloAlCalcularFee(false);
                 }
@@ -319,33 +333,43 @@ function EnviarCrypto() {
         }
     }
 
-    const comprobarSaldoAEnviar = () => {
-        let valorConversion = wallet!.tipoMoneda === 'BTC' ? 100_000_000 : 1_000_000_000;
-        let comisionConvertida = new BigNumber(Number(comision) / valorConversion);
+    const comprobarSaldoAEnviar = (): boolean => {
+        if (comision === '' || comision === undefined) setComision('1');
+        let valorConversionSats = 100_000_000;
+        let comisionConvertida = wallet!.tipoMoneda === 'BTC' ? 
+            new BigNumber(Number(comision) / valorConversionSats) : new BigNumber(ethers.formatEther(comision));
+
         let cantidadAEnviarBN = new BigNumber(Number(cantidadAenviar));
         let saldoActual = saldos[wallet!.nombre];
         
-        if (!saldoActual) return;
+        if (!saldoActual) return false;
+
 
         // ¿Saldo sin fee suficiente?
         if (saldoActual.minus(cantidadAEnviarBN).isLessThan(0)) {
             setSaldoInsuficiente(true);
-            return;
+            return false;
         }
 
         let totalAEnviar: BigNumber = comisionConvertida.plus(cantidadAEnviarBN);
 
         let restoSaldo = saldoActual.minus(totalAEnviar);
 
-        // Menor o igual
+        // Menor
         // ¿Saldo con fee suficiente?
         if (restoSaldo.isLessThan(0)) {
             setSaldoConFeeInsuficiente(true);
-            return;
+            return false;
         }
 
-        setSaldoConFeeInsuficiente(false);
-        setSaldoInsuficiente(false);
+        return true;
+    }
+
+    const handleBotonEnviar = () => {
+        if (comprobarSaldoAEnviar()) {
+            setSaldoConFeeInsuficiente(false);
+            setSaldoInsuficiente(false);
+        }
     }
 
     const ventanaCantidadAEnviar = () => {
@@ -654,22 +678,26 @@ function EnviarCrypto() {
                                             <input
                                                 type="number"
                                                 step="any"
+                                                disabled={!saldoWalletComprobado}
                                                 placeholder={`Cantidad en ${wallet?.tipoMoneda}`}
                                                 value={cantidadAenviar}
                                                 onChange={(e) => {
-                                                    setCantidadAenviar(e.target.value);
+                                                    const valor = e.target.value
+                                                    setCantidadAenviar(valor);
                                                     setSaldoInsuficiente(null);
                                                     setSaldoConFeeInsuficiente(null);
-                                                    handleCalcularComisionAuto();
+                                                    handleCalcularComisionAuto(valor);
                                                     setFalloAlCalcularFee(false);
                                                 }}
-                                                className={`w-full max-w-[205px] bg-neutral-800 hover:bg-neutral-900
-                                                text-white font-semibold py-1 px-3 rounded-xl shadow-md
-                                                transition duration-300 ${saldoInsuficiente || saldoConFeeInsuficiente
-                                                    ? "border-red-500 border-2" : "border-gray-500 border"}`}
+                                                className={`w-full max-w-[205px] font-semibold py-1 px-3 rounded-xl shadow-md focus:outline-none
+                                                transition duration-300 
+                                                ${saldoWalletComprobado ? "cursor-text text-white bg-neutral-800 hover:bg-neutral-900" 
+                                                    : "bg-neutral-600 text-gray-300 cursor-not-allowed border-gray-400"}
+                                                ${saldoInsuficiente || saldoConFeeInsuficiente
+                                                    ? "border-red-500 border-2 focus:border-red-500" : "border-gray-500 border focus:border-white"}`}
                                             />
                                             <span className="text-white font-semibold text-md min-w-[40px] text-right">
-                                                ≈ {cantidadAenviarEur.toFixed(2)} €
+                                               {wallet?.tipoMoneda} ≈ {cantidadAenviarEur.toFixed(2)} €
                                             </span>
                                         </div>
 
@@ -713,16 +741,24 @@ function EnviarCrypto() {
                                                 type="number"
                                                 step="any"
                                                 placeholder="Comisión"
+                                                disabled={!saldoWalletComprobado}
                                                 value={comision}
                                                 onChange={(e) => {
-                                                    setComision(e.target.value);
+                                                    let valor = e.target.value;
+                                                    // Convertir a número para validar
+                                                    const numVal = Number(valor);
+                                                    if (valor === '' || numVal <= 0 || isNaN(numVal)) {
+                                                        valor = '1';  // poner mínimo 1 para evitar nulos o 0s
+                                                    }
+                                                    setComision(valor);
                                                     setSaldoInsuficiente(null);
                                                     setSaldoConFeeInsuficiente(null);
                                                     setFalloAlCalcularFee(false);
                                                 }}
-                                                className={`w-full max-w-[140px] bg-neutral-800 hover:bg-neutral-900
-                                                 text-white font-semibold py-1 px-3 rounded-xl shadow-md
-                                                 transition duration-300 border-gray-500 border mx-auto`}
+                                                className={`w-full max-w-[140px] font-semibold py-1 px-3 rounded-xl shadow-md
+                                                 transition duration-300 border mx-auto
+                                                ${saldoWalletComprobado ? "cursor-text text-white bg-neutral-800 border-gray-500 hover:bg-neutral-900" 
+                                                    : "bg-neutral-600 text-gray-300 cursor-not-allowed border-gray-400"}`}
                                             />
                                             <span className="text-white text-sm min-w-[80px] text-right">
                                                 ≈ {cantidadComisionEur.toFixed(2)} €
@@ -739,7 +775,7 @@ function EnviarCrypto() {
                                 {/* Botón Enviar */}
                                 <div className="mt-7.5 flex flex-col items-center text-center">
                                     <button
-                                        onClick={comprobarSaldoAEnviar}
+                                        onClick={handleBotonEnviar}
                                         disabled={!saldoWalletComprobado || comision.length === 0 || cantidadAenviar.length === 0}
                                         className={`px-4 py-2 rounded-xl shadow-md border flex items-center gap-2 transition duration-300
                                             ${
@@ -770,7 +806,12 @@ function EnviarCrypto() {
                                 )}
                                 {falloAlCalcularFee && (
                                     <h2 className="text-center mt-4 text-lg font-semibold text-red-500 select-none">
-                                        Ha ocurrido un fallo al calcular el fee. Si el error persiste, puede que sea porque la comisión de red sea más alta que su saldo.
+                                        Ha ocurrido un fallo al calcular la comisión. Si el error persiste, puede que sea porque la comisión de red sea más alta que su saldo.
+                                    </h2>
+                                )}
+                                {feeMuyAltoDetectado && (
+                                    <h2 className="text-center mt-4 text-lg font-semibold text-red-500 select-none">
+                                        La comisión actual es demasiado alta. Si no es intencional, por favor, pruebe con un valor más bajo de comisión o espere a que la red no esté congestionada.
                                     </h2>
                                 )}
                             </>
@@ -779,7 +820,7 @@ function EnviarCrypto() {
                 )}
             </>
         ) : (
-            // Este bloque se muestra si saldoConFeeInsuficiente y saldoInsuficiente son false (es decir, no hay problemas de saldo)
+            // Este bloque se muestra si saldoConFeeInsuficiente y saldoInsuficiente son false
             <>
                 {!shouldExecuteTransaction &&
                     <>

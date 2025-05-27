@@ -1,4 +1,3 @@
-import type { BtcResponse } from "../types/BtcBalance";
 import type { CryptoAPIResponse } from "../types/CryptoPrices";
 import type { EthResponse } from "../types/EthBalance";
 import type { WalletInfo } from "../types/WalletInfo";
@@ -39,7 +38,7 @@ export async function listarPrecios(): Promise<CryptoAPIResponse | null> {
   }
 }
 
-export async function consultarDireccion(direccion: string, pagina: string, testnet?: boolean): Promise<EthResponse | BtcResponse | null> {
+export async function consultarDireccion(direccion: string, pagina: string, testnet?: boolean): Promise<EthResponse | null> {
   try {
     const result = await window.api.consultarDireccion(direccion, pagina, testnet);
     return result;

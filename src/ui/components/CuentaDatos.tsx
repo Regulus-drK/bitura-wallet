@@ -10,8 +10,9 @@ import { consultarDireccion, getAllWallets, getMnemonic, getRedSeleccionada, lis
 import { ArrowDown, ArrowUp, ArrowLeft, RefreshCw } from "lucide-react";
 import { useWallets } from "../../context/WalletContext";
 import { useAuth } from "../../context/AuthContext";
-import { verificarFondosDireccionesBtc } from "../../services/walletService";
+import { obtenerTxsBtc, verificarFondosDireccionesBtc } from "../../services/walletService";
 import { parseEthResponse, type EthResponse } from "../../types/EthBalance";
+import { type BtcTransactionFormatted } from "../../types/BtcBalance";
 
 function CuentaDatos() {
   const { password } = useAuth();
@@ -21,7 +22,10 @@ function CuentaDatos() {
   const [redSeleccionada, setRedSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
   const [saldos, setSaldos] = useState<Record<string, BigNumber>>({});
   const [saldoEur, setSaldoEur] = useState<number>(-1);
-  const [precioActCrypto, setPrecioActCrypto] = useState<CryptoAPIResponse | null>(null);
+  const [datosPrecioActCrypto, setDatosPrecioActCrypto] = useState<CryptoAPIResponse | null>(null);
+  const [precioActCrypto, setPrecioActCrypto] = useState<number>(1);
+  const [isTxsLoaded, setIsTxsLoaded] = useState<boolean>(false);
+  const [txsBtc, setTxsBtc] = useState<BtcTransactionFormatted[]>([]);
   const navigate = useNavigate();
 
   const isCancelled = useRef(false);
@@ -37,7 +41,8 @@ function CuentaDatos() {
       // Reset de variables para hacer aparecer de nuevo los spinner e indicar que está cargando de nuevo
       setSaldos({});
       setSaldoEur(-1);
-      setPrecioActCrypto(null);
+      setDatosPrecioActCrypto(null);
+      setIsTxsLoaded(false);
 
       const datos = await listarPrecios();
       if (isCancelled.current || !datos) return;
@@ -54,8 +59,9 @@ function CuentaDatos() {
           [wallet.tipoMoneda]: criptoFiltrada,
         },
       };
-      setPrecioActCrypto(nuevaRespuesta);
+      setDatosPrecioActCrypto(nuevaRespuesta);
       const precioMoneda = criptoFiltrada.quote.EUR.price;
+      setPrecioActCrypto(precioMoneda);
 
       if (wallet?.tipoMoneda === 'BTC') {
         const mnemonic = await getMnemonic(password!);
@@ -70,6 +76,8 @@ function CuentaDatos() {
         const totalEur = fondosBtc.totalBtc.toNumber() * precioMoneda;
         setSaldoEur(totalEur);
         wallet.ultSaldoGuardadoEur = totalEur;
+
+        loadTransaccionesBtc();
       } else {
         let testnet = redSeleccionada === 'testnet' ? true : false;
         const result = await consultarDireccion(wallet.direccionPublica, '1', testnet);
@@ -102,6 +110,23 @@ function CuentaDatos() {
     }
   };
 
+  const loadTransaccionesBtc = async () => {
+    try {
+      const mnemonic = await getMnemonic(password!);
+      if (!mnemonic) return;
+      const resultados = await obtenerTxsBtc(mnemonic, wallet, redSeleccionada!);
+      if (resultados) {
+        setTxsBtc(resultados); // [{ direccion, txsFormateadas }]
+        setIsTxsLoaded(true);
+      }
+
+    } catch (err) {
+      console.error("Error cargando transacciones BTC:", err);
+      setTxsBtc([]);
+      setIsTxsLoaded(true);
+    }
+  }
+
   useEffect(() => {
       const cargarRed = async () => setRedSeleccionada(await getRedSeleccionada());
       cargarRed();
@@ -125,7 +150,7 @@ function CuentaDatos() {
   const iconoCrypto = wallet.tipoMoneda === 'BTC' ? btcIcon : ethIcon;
   const fecha = new Date();
   const ultSync = fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'});
-  const infoCripto = precioActCrypto?.data[wallet.tipoMoneda];
+  const infoCripto = datosPrecioActCrypto?.data[wallet.tipoMoneda];
 
   return (
     <div className="max-w-6xl mx-auto p-4">
@@ -293,8 +318,124 @@ function CuentaDatos() {
       {/* Área para transacciones */}
       <div className="bg-neutral-700 shadow rounded-xl p-4">
         <h3 className="text-xl font-semibold mb-4">Transacciones</h3>
-        <div className="text-gray-500 italic">Aquí se listarán las transacciones con paginación...</div>
-        {/* Aquí irán los componentes de transacciones paginadas */}
+        {!isTxsLoaded ? (
+          <div className="flex items-center justify-center h-25">
+            <Spinner />
+          </div>
+        ) : (
+          <>
+            {wallet.tipoMoneda === 'BTC' ? (
+            <>
+              {txsBtc.length === 0 ? (
+                <p className="text-gray-400">No se encontraron transacciones para las direcciones.</p>
+              ) : (
+                txsBtc.map((tx, idx) => {
+                  const direccion = tx.address;
+                  const recibido = tx.vout.some(vout => vout.scriptpubkey_address === direccion);
+                  const enviado = tx.vin.some(vin => vin.prevout.scriptpubkey_address === direccion);
+                  const hayCambio = tx.vout.some(vout => vout.esCambio);
+
+                  const tipo = recibido && enviado
+                    ? (hayCambio ? "Cambio" : "Enviado a uno mismo")
+                    : recibido
+                    ? "Recibido"
+                    : "Enviado";
+
+                  const color = tipo === "Recibido"
+                    ? "green"
+                    : tipo === "Enviado"
+                    ? "red"
+                    : "yellow";
+
+                  const icon =
+                    tipo === "Recibido" ? (
+                      <ArrowDown className={`text-${color}-400`} />
+                    ) : tipo === "Enviado" ? (
+                      <ArrowUp className={`text-${color}-400`} />
+                    ) : (
+                      <ArrowUp className="text-yellow-400 rotate-180" />
+                    );
+
+                  const valorTotal =
+                    tipo === "Recibido"
+                      ? tx.vout
+                          .filter(vout => vout.scriptpubkey_address === direccion)
+                          .reduce((sum, v) => sum + Number(v.valueBtc), 0)
+                      : tx.vin
+                          .filter(vin => vin.prevout.scriptpubkey_address === direccion)
+                          .reduce((sum, v) => sum + Number(v.prevout.valueBtc), 0);
+
+                  return (
+                    <div
+                      key={`${idx}`}
+                      className={`rounded-xl p-4 mb-4 shadow bg-neutral-800 border-l-4 ${
+                        tipo === "Recibido"
+                          ? "border-green-500"
+                          : tipo === "Enviado"
+                          ? "border-red-500"
+                          : "border-yellow-500"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          {icon}
+                          <span className="font-semibold text-white">{tipo}</span>
+                          {tipo === "Cambio" && (
+                            <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-600 text-white rounded-full">
+                              Cambio
+                            </span>
+                          )}
+                          {tipo === "Enviado a uno mismo" && (
+                            <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-600 text-white rounded-full">
+                              A ti mismo
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-400">
+                          {tx.status.confirmed
+                            ? tx.status.block_time_formatted
+                            : "No confirmado"}
+                        </span>
+                      </div>
+
+                      <div className="text-sm text-gray-300 break-all mb-2">
+                        <a
+                          href={`https://mempool.space/${
+                            redSeleccionada === "mainnet" ? "" : "testnet/"
+                          }tx/${tx.txid}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 underline hover:text-blue-300 transition"
+                        >
+                          {tx.txid}
+                        </a>
+                      </div>
+
+                      <div className="flex justify-between text-sm">
+                        <div
+                          className={`${
+                            tipo === "Enviado" ? "text-red-400" : tipo === "Cambio" ? "text-yellow-400" : "text-green-500"
+                          }`}
+                        >
+                          {tipo === "Enviado" ? "-" : "+"}
+                          {valorTotal.toFixed(7)} BTC ≈{" "}
+                          {(valorTotal * precioActCrypto).toFixed(2)} EUR
+                        </div>
+                        <div>
+                          <strong>Fee:</strong> {tx.feeBtc} BTC ≈{" "}
+                          {(Number(tx.feeBtc) * precioActCrypto).toFixed(2)} EUR
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </>
+            ) : (
+              <div>A</div>
+            )}
+          </>
+        )}
       </div>
     </div>
 
