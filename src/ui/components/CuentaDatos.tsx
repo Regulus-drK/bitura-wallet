@@ -11,7 +11,7 @@ import { ArrowDown, ArrowUp, ArrowLeft, RefreshCw, Settings } from "lucide-react
 import { useWallets } from "../../context/WalletContext";
 import { useAuth } from "../../context/AuthContext";
 import { obtenerTxsBtc, verificarFondosDireccionesBtc } from "../../services/walletService";
-import { parseEthResponse, type EthResponse } from "../../types/EthBalance";
+import { type ParsedEthResponse, parseEthResponse, type EthResponse } from "../../types/EthBalance";
 import { type BtcTransactionFormatted } from "../../types/BtcBalance";
 import TransiccionPagina from "./TransiccionPagina";
 
@@ -27,6 +27,8 @@ function CuentaDatos() {
   const [precioActCrypto, setPrecioActCrypto] = useState<number>(1);
   const [isTxsLoaded, setIsTxsLoaded] = useState<boolean>(false);
   const [txsBtc, setTxsBtc] = useState<BtcTransactionFormatted[]>([]);
+  const [fondosEth, setFondosEth] = useState<ParsedEthResponse>();
+  const [paginaTxEth, setPaginaTxEth] = useState<number>(1);
   const navigate = useNavigate();
 
   const isCancelled = useRef(false);
@@ -81,19 +83,24 @@ function CuentaDatos() {
         loadTransaccionesBtc();
       } else {
         let testnet = redSeleccionada === 'testnet' ? true : false;
-        const result = await consultarDireccion(wallet.direccionPublica, '1', testnet);
+        const result = await consultarDireccion(wallet.direccionPublica, paginaTxEth.toString(), testnet);
 
         if (isCancelled.current) return;
         
         if (result) {
           const fondosEth = parseEthResponse(result as EthResponse);
 
+          setFondosEth(fondosEth);
           setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosEth.balanceEth }));
           wallet.ultSaldoGuardado = fondosEth.balanceEth.toFixed(7);
 
           const totalEur = fondosEth.balanceEth.toNumber() * precioMoneda;
           setSaldoEur(totalEur);
           wallet.ultSaldoGuardadoEur = totalEur;
+
+          setIsTxsLoaded(true);
+          console.log(fondosEth.transactions)
+          console.log(fondosEth.page)
         }
       }
       // Después de sacar los datos y ajustarlos, se actualiza la wallet en el JSON
@@ -453,7 +460,13 @@ function CuentaDatos() {
                 )}
               </>
               ) : (
-                <div>A</div>
+                <>
+                  {fondosEth?.page === 1 && fondosEth.transactions.length === 0 ? (
+                    <p className="text-gray-400">No se encontraron transacciones en esta cuenta.</p>
+                  ) : (
+                    <h1>TO DO</h1>
+                  )}
+                </>
               )}
             </>
           )}

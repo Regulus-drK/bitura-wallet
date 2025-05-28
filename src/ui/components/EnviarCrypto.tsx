@@ -611,7 +611,7 @@ function EnviarCrypto() {
                             </div>
                             <p className="text-md font-medium text-gray-300">
                                 Saldo: {saldos[wallet!.nombre] ? saldos[wallet!.nombre]?.toFixed(7) : wallet?.ultSaldoGuardado} {wallet?.tipoMoneda} {' '}
-                                ≈ {precioActCrypto ? ((Number(wallet?.ultSaldoGuardado) * precioActCrypto).toFixed(2)) : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
+                                ≈ {precioActCrypto !== 0 ? ((Number(saldos[wallet!.nombre]) * precioActCrypto).toFixed(2)) : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
                             </p>
                         </div>
 
