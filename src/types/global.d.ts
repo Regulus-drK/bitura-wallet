@@ -37,8 +37,8 @@ declare global {
       getAllWallets: () => Promise<WalletInfo[]>;
       getWalletPorTipo: (tipo: 'BTC' | 'ETH') => Promise<WalletInfo | null>;
       addWallet: (nuevaWallet: WalletInfo) => Promise<boolean>;
-      updateWallet: (nombre: string, datosActualizados: Partial<WalletInfo>) => Promise<boolean>;
-      deleteWallet: (nombre: string) => Promise<boolean>;
+      updateWallet: (nombre: string, datosActualizados: Partial<WalletInfo>, red?: string) => Promise<boolean>;
+      deleteWallet: (nombre: string, red?: string) => Promise<boolean>;
       deleteConfigFiles: (inputPassword: string) => Promise<boolean>;
     };
   }

@@ -92,7 +92,7 @@ function EnviarCrypto() {
                     setSaldos(prev => ({ ...prev, [w.nombre]: result ? result.totalBtc : null }));
                     w.ultSaldoGuardado = result.totalBtc.toFixed(7);
             
-                    const walletActualizada = await updateWallet(w.nombre, w);
+                    const walletActualizada = await updateWallet(w.nombre, w, redSeleccionada);
 
                     if (walletActualizada) {
                         const allWallets = await getAllWallets();
@@ -626,6 +626,7 @@ function EnviarCrypto() {
                                     <input
                                         type="text"
                                         value={receiptAddress || ""}
+                                        spellCheck="false"
                                         onChange={(e) => {
                                             setReceiptAddress(e.target.value);
                                             setIsValidAddress(null);

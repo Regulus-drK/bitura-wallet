@@ -1,11 +1,12 @@
 import { Suspense, useEffect } from 'react';
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { enableMenu } from '../../services/apiService';
 import { walletShouldBeConfigured } from '../../hooks/walletShouldBeConfigured';
 import { useWindowSize } from '../../hooks/useWindowSize';
 // import { useAuth } from '../../context/AuthContext';
 import SidebarMenu from '../components/SidebarMenu';
 import Spinner from '../components/Spinner';
+import { AnimatePresence } from 'framer-motion';
 // import { crearYGuardarWalletBtc } from '../../services/walletService';
 // import { useWallets } from '../../context/WalletContext';
 
@@ -17,6 +18,8 @@ function Inicio() {
 
   walletShouldBeConfigured(true);
 
+  const location = useLocation();
+
   useEffect(() => {
     enableMenu();
   });
@@ -24,7 +27,7 @@ function Inicio() {
   useWindowSize({
       width: 1200,
       height: 850,
-      minWidth: 850,
+      minWidth: 1050,
       minHeight: 650,
       resizable: true
   });
@@ -33,9 +36,11 @@ function Inicio() {
     <div className="flex min-h-screen bg-neutral-800 text-white">
       <SidebarMenu />
 
-      <main className="ml-60 flex-1 p-6 text-center relative">
+      <main className="ml-60 flex-1 p-6 text-center relative overflow-hidden">
         <Suspense fallback={<Spinner />}>
-          <Outlet />
+          <AnimatePresence mode="wait">
+            <Outlet key={location.pathname}/>
+          </AnimatePresence>
         </Suspense>
       </main>
     </div>

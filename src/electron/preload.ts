@@ -66,8 +66,8 @@ contextBridge.exposeInMainWorld('api', {
     getAllWallets: () => ipcRenderer.invoke('wallet:getAllWallets'),
     getWalletPorTipo: (tipo: 'BTC' | 'ETH') => ipcRenderer.invoke('wallet:getWalletPorTipo', tipo),
     addWallet: (nuevaWallet: WalletInfo) => ipcRenderer.invoke('wallet:addWallet', nuevaWallet),
-    updateWallet: (nombre: string, datosActualizados: Partial<WalletInfo>) => ipcRenderer.invoke('wallet:updateWallet', nombre, datosActualizados),
-    deleteWallet: (nombre: string) => ipcRenderer.invoke('wallet:deleteWallet', nombre),
+    updateWallet: (nombre: string, datosActualizados: Partial<WalletInfo>, red?: string) => ipcRenderer.invoke('wallet:updateWallet', nombre, datosActualizados, red),
+    deleteWallet: (nombre: string, red?: string) => ipcRenderer.invoke('wallet:deleteWallet', nombre, red),
     deleteConfigFiles: (inputPassword: string) => {
         // Primero validamos la contraseña
         ipcRenderer.invoke('wallet:validatePassword', inputPassword)

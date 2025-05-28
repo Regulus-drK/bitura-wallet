@@ -344,19 +344,29 @@ app.on("ready", () => {
     });
 
     // Actualizar una wallet por nombre
-    ipcMain.handle('wallet:updateWallet', (_event, nombre: string, datosActualizados: Partial<WalletInfo>) => {
+    ipcMain.handle('wallet:updateWallet', (_event, nombre: string, datosActualizados: Partial<WalletInfo>, red?: string) => {
         const existentes = store.get('wallets') || [];
-        const actualizadas = existentes.map(wallet =>
-            wallet.nombre === nombre ? { ...wallet, ...datosActualizados } : wallet
-        );
+        const actualizadas = existentes.map(wallet => {
+            const coincideNombre = wallet.nombre === nombre;
+            const coincideRed = red ? wallet.red === red : true;
+
+            return coincideNombre && coincideRed ? { ...wallet, ...datosActualizados } : wallet;
+        });
         store.set('wallets', actualizadas);
         return true;
     });
 
     // Eliminar una wallet
-    ipcMain.handle('wallet:deleteWallet', (_event, nombre: string) => {
+    ipcMain.handle('wallet:deleteWallet', (_event, nombre: string, red?: string) => {
         const existentes = store.get('wallets') || [];
-        const filtradas = existentes.filter(wallet => wallet.nombre !== nombre);
+
+        const filtradas = existentes.filter(wallet => {
+            if (red) {
+                return !(wallet.nombre === nombre && wallet.red === red);
+            } else {
+                return wallet.nombre !== nombre;
+            }
+        });
         store.set('wallets', filtradas);
         return true;
     });

@@ -15,9 +15,9 @@ const PasswordPrompt = React.lazy(() => import('./components/PasswordPrompt'));
 const InicioDashboard = React.lazy(() => import('./components/InicioDashboard'));
 const CuentasAgregar = React.lazy(() => import('./components/CuentasAgregar'));
 const CuentaDatos = React.lazy(() => import('./components/CuentaDatos'));
+const CuentaAjustes = React.lazy(() => import('./components/CuentaAjustes'));
 const EnviarCrypto = React.lazy(() => import('./components/EnviarCrypto'));
 const RecibirCrypto = React.lazy(() => import('./components/RecibirCrypto'));
-
 
 
 function App() {
@@ -35,6 +35,7 @@ function App() {
                 <Route path='cuentas' element={<Cuentas/>} />
                 <Route path='cuentas/agregar' element={<CuentasAgregar />} />
                 <Route path='cuentas/datos-cuenta' element={<CuentaDatos />} />
+                <Route path='cuentas/datos-cuenta/ajustes' element={<CuentaAjustes />} />
                 <Route path='enviar' element={<EnviarCrypto />} />
                 <Route path='recibir' element={<RecibirCrypto />} />
                 <Route path='config' element={<Ajustes/>} />

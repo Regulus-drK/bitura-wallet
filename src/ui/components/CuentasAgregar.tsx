@@ -211,6 +211,7 @@ function CuentasAgregar() {
                                 <input
                                     type="text"
                                     value={nombreWallet || ""}
+                                    spellCheck="false"
                                     onChange={(e) => {
                                         setNombreWallet(e.target.value);
                                         setNameTaken(false);

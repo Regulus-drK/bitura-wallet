@@ -156,7 +156,7 @@ export async function crearYGuardarWalletBtc(
         indicePrivada: index,
         indicePublicaActual: 0,
         direccionPublica: walletBtc.address,
-        ultSaldoGuardado: '0.000000',
+        ultSaldoGuardado: '0.0000000',
         ultSaldoGuardadoEur: 0
     };
 
@@ -217,7 +217,7 @@ export async function crearDireccionPublicaBtc(mnemonic: string | null, cuenta: 
     cuenta.indicePublicaActual = indiceSiguiente;
     cuenta.direccionPublica = addressBitcoin!;
 
-    const actualizado = await updateWallet(cuenta.nombre, cuenta);
+    const actualizado = await updateWallet(cuenta.nombre, cuenta, cuenta.red);
 
     return actualizado;
 }
@@ -410,7 +410,6 @@ export async function obtenerTxsBtc(
             );
 
             let encontradasEnBatch = 0;
-            console.log([...direccionesCambio])
 
             for (let i = 0; i < respuestas.length; i++) {
                 const respuesta = respuestas[i];
@@ -457,15 +456,6 @@ export async function obtenerTxsBtc(
 
         return alturaB - alturaA;
     });
-
-    resultados.forEach(r => {
-        console.log('Direccion: ', r.address)
-        r.vout.forEach(r => {
-            console.log('Destino: ', r.scriptpubkey_address)
-            console.log(r.esCambio)
-            console.log('-------------------------------')
-        })
-    })
 
     return resultados;
 }
