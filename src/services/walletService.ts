@@ -20,58 +20,6 @@ export function validarMnemonic(mnemonic: string): boolean {
 }
 
 /**
- * Crea una wallet para Bitcoin y Ethereum a partir de una frase semilla.
- * @param mnemonic La frase semilla.
- * @returns Wallets para ambas redes.
- */
-export function createWallets(mnemonic: string | null, index: number, testnet?: boolean) {
-    let network;
-    if (testnet) {
-        network = bitcoin.networks.testnet;
-    }
-    if (!mnemonic) return;
-
-    if (!validarMnemonic(mnemonic)) return;
-
-    // Convertir la frase semilla en una semilla binaria
-    const binSeed = bip39.mnemonicToSeedSync(mnemonic);
-
-    // Derivar raíz BIP32
-    const root = bip32.fromSeed(binSeed);
-
-    // Para Bitcoin
-    const pathBitcoin = `m/84'/0'/0'/${index}'/0`; // BIP44 - BTC Native SegWit
-    const childBitcoin = root.derivePath(pathBitcoin);
-    const { address: addressBitcoin } = bitcoin.payments.p2wpkh({ 
-        pubkey: Buffer.from(childBitcoin.publicKey),
-        network: network
-    });
-
-    // Ethereum
-    const pathEthereum = `m/44'/60'/0'/${index}'/0`; // BIP44 - Ethereum
-    const childEthereum = root.derivePath(pathEthereum);
-
-    // Verificar que la clave privada de Ethereum no es undefined
-    if (!childEthereum.privateKey) {
-        throw new Error('Clave privada de Ethereum no disponible');
-    }
-
-    const walletEthereum = new ethers.Wallet(Buffer.from(childEthereum.privateKey).toString('hex'));
-    const addressEthereum = walletEthereum.address;
-
-    return {
-        bitcoin: {
-            address: addressBitcoin!,
-            privateKey: childBitcoin.privateKey!,
-        },
-        ethereum: {
-            address: addressEthereum,
-            privateKey: walletEthereum.privateKey,
-        },
-    };
-}
-
-/**
  * Función para crear una wallet de Bitcoin a partir del mnemonic.
  * @param mnemonic Mnemonic guardado en .bin
  * @param indexPrivada Índice de la clave privada a generar

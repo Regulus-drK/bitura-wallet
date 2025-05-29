@@ -99,8 +99,6 @@ function CuentaDatos() {
           wallet.ultSaldoGuardadoEur = totalEur;
 
           setIsTxsLoaded(true);
-          console.log(fondosEth.transactions)
-          console.log(fondosEth.page)
         }
       }
       // Después de sacar los datos y ajustarlos, se actualiza la wallet en el JSON
