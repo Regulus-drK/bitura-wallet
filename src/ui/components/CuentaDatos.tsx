@@ -7,7 +7,7 @@ import BigNumber from "bignumber.js";
 import Spinner from "./Spinner";
 import type { CryptoAPIResponse } from "../../types/CryptoPrices";
 import { consultarDireccion, getAllWallets, getMnemonic, getRedSeleccionada, listarPrecios, updateWallet } from "../../services/apiService";
-import { ArrowDown, ArrowUp, ArrowLeft, RefreshCw, Settings } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowLeft, RefreshCw, Settings, ArrowRight } from "lucide-react";
 import { useWallets } from "../../context/WalletContext";
 import { useAuth } from "../../context/AuthContext";
 import { obtenerTxsBtc, verificarFondosDireccionesBtc } from "../../services/walletService";
@@ -43,6 +43,7 @@ function CuentaDatos() {
     try {
       // Reset de variables para hacer aparecer de nuevo los spinner e indicar que está cargando de nuevo
       setSaldos({});
+      setFondosEth(undefined);
       setSaldoEur(-1);
       setDatosPrecioActCrypto(null);
       setIsTxsLoaded(false);
@@ -133,6 +134,16 @@ function CuentaDatos() {
     }
   }
 
+  const handlePaginaAnterior = () => {
+    if (fondosEth && fondosEth.page > 1) {
+      setPaginaTxEth(prev => prev - 1);
+    }
+  }
+
+  const handlePaginaSiguiente = () => {
+    setPaginaTxEth(prev => prev + 1);
+  }
+
   useEffect(() => {
       const cargarRed = async () => setRedSeleccionada(await getRedSeleccionada());
       cargarRed();
@@ -152,6 +163,12 @@ function CuentaDatos() {
       isCancelled.current = true;
     };
   }, [wallet, password, redSeleccionada]);
+
+  useEffect(() => {
+    if (isTxsLoaded) { // Evitar carga inicial duplicada
+      loadPricesYBalances();
+    }
+  }, [paginaTxEth]); 
 
   const iconoCrypto = wallet.tipoMoneda === 'BTC' ? btcIcon : ethIcon;
   const fecha = new Date();
@@ -342,87 +359,60 @@ function CuentaDatos() {
             </div>
           ) : (
             <>
-              {wallet.tipoMoneda === 'BTC' ? (
+            {wallet.tipoMoneda === 'BTC' ? (
               <>
                 {txsBtc.length === 0 ? (
                   <p className="text-gray-400">No se encontraron transacciones en esta cuenta.</p>
                 ) : (
                   txsBtc.map((tx, idx) => {
                     const direccion = tx.address;
-                    const recibido = tx.vout.some(vout => vout.scriptpubkey_address === direccion);
-                    const enviado = tx.vin.some(vin => vin.prevout.scriptpubkey_address === direccion);
-                    const hayCambio = tx.vout.some(vout => vout.scriptpubkey_address === direccion && vout.esCambio);
-
-                    // Prioriza "Transferencia interna"
-                    const tipo = hayCambio
-                      ? "Transferencia interna"
-                      : recibido && enviado
-                      ? "Enviado a uno mismo"
-                      : recibido
-                      ? "Recibido"
-                      : "Enviado";
-
-                    const icon =
-                      tipo === "Recibido" ? (
-                        <ArrowDown className={`text-green-400`} />
-                      ) : tipo === "Enviado" ? (
-                        <ArrowUp className={`text-red-400`} />
-                      ) : (
-                        <ArrowUp className="text-yellow-400 rotate-90" />
-                      );
-
-                    const valorTotal =
-                      tipo === "Recibido"
-                        ? tx.vout
-                            .filter(vout => vout.scriptpubkey_address === direccion)
-                            .reduce((sum, v) => sum + Number(v.valueBtc), 0)
-                      : tipo === "Transferencia interna"
-                        ? tx.vout
-                            .filter(vout => vout.scriptpubkey_address === direccion && vout.esCambio)
-                            .reduce((sum, v) => sum + Number(v.valueBtc), 0)
-                      : // Enviado y Enviado a uno mismo
-                        tx.vin
-                            .filter(vin => vin.prevout.scriptpubkey_address === direccion)
-                            .reduce((sum, v) => sum + Number(v.prevout.valueBtc), 0);
+                    
+                    // Determinar tipo de transacción
+                    const esRecibido = tx.vout.some(vout => vout.scriptpubkey_address === direccion);
+                    const esEnviado = tx.vin.some(vin => vin.prevout.scriptpubkey_address === direccion);
+                    const esCambio = tx.vout.some(vout => vout.scriptpubkey_address === direccion && vout.esCambio && 
+                      tx.vin.some(vin => vin.prevout.scriptpubkey_address !== direccion)
+                    );
+                    
+                    const tipo = esCambio ? "Transferencia interna" : 
+                                esEnviado ? "Enviado" :
+                                esRecibido ? "Recibido" : "Enviado";
 
                     return (
                       <div
                         key={`${idx}`}
                         className={`rounded-xl p-4 mb-4 shadow bg-neutral-800 border-l-4 ${
-                          tipo === "Recibido"
-                            ? "border-green-500"
-                            : tipo === "Enviado"
-                            ? "border-red-500"
-                            : "border-yellow-500"
+                          tipo === "Recibido" ? "border-green-500" :
+                          tipo === "Enviado" ? "border-red-500" :
+                          "border-yellow-500"
                         }`}
                       >
+                        {/* Encabezado de la transacción */}
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-3">
-                            {icon}
+                            {tipo === "Recibido" ? (
+                              <ArrowDown className="text-green-400" />
+                            ) : tipo === "Enviado" ? (
+                              <ArrowUp className="text-red-400" />
+                            ) : (
+                              <ArrowUp className="text-yellow-400 rotate-90" />
+                            )}
                             <span className="font-semibold text-white">{tipo}</span>
-                            {tipo === "Transferencia interna" && (
+                            {esCambio && (
                               <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-600 text-white rounded-full">
                                 Cambio
                               </span>
                             )}
-                            {tipo === "Enviado a uno mismo" && (
-                              <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-600 text-white rounded-full">
-                                A ti mismo
-                              </span>
-                            )}
                           </div>
                           <span className="text-xs text-gray-400">
-                            {tx.status.confirmed
-                              ? tx.status.block_time_formatted
-                              : "No confirmado"}
+                            {tx.status.confirmed ? tx.status.block_time_formatted : "No confirmado"}
                           </span>
                         </div>
 
-                        <div className="text-sm text-gray-300 break-all mb-2">
+                        {/* ID de transacción */}
+                        <div className="text-sm text-gray-300 break-all mb-3">
                           <a
-                            href={`https://mempool.space/${
-                              redSeleccionada === "mainnet" ? "" : "testnet/"
-                            }tx/${tx.txid}`}
+                            href={`https://mempool.space/${redSeleccionada === "mainnet" ? "" : "testnet/"}tx/${tx.txid}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-400 underline hover:text-blue-300 transition"
@@ -431,26 +421,84 @@ function CuentaDatos() {
                           </a>
                         </div>
 
-                        <div className="flex justify-between text-sm">
-                          <div
-                            className={`${
-                              tipo === "Enviado"
-                                ? "text-red-400"
-                                : tipo === "Transferencia interna"
-                                ? "text-yellow-400"
-                                : "text-green-500"
-                            }`}
-                          >
-                            {tipo === "Enviado" ? "-" : "+"}
-                            {valorTotal.toFixed(7)} BTC ≈{" "}
-                            {(valorTotal * precioActCrypto).toFixed(2)} EUR
+                        {/* Detalles de entradas (inputs) */}
+                        <div className="mb-4">
+                          <h4 className="text-sm font-semibold text-gray-300 mb-2">Entradas:</h4>
+                          {tx.vin
+                            .map((vin, i) => (
+                              <div
+                                key={`vin-${i}`}
+                                className="text-sm flex flex-col sm:flex-row sm:justify-between mb-2 bg-red-800/30 p-2 rounded-lg"
+                              >
+                                <span className="text-red-400 font-medium">-{vin.prevout.valueBtc} BTC</span>
+                                <span className="text-gray-400 text-xs mt-1 sm:mt-0 break-all">
+                                  <span className="font-semibold text-white">Desde:</span> {vin.prevout.scriptpubkey_address}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                        
+                        {/* Detalles de salidas (outputs) */}
+                        <div className="mb-4">
+                          <h4 className="text-sm font-semibold text-gray-300 mb-2">Salidas:</h4>
+                          {tx.vout
+                          .map((vout, i) => {
+                            const esDestino = vout.scriptpubkey_address === direccion;
+                            const esCambio = vout.esCambio;
+
+                            return (
+                              <div
+                                key={`vout-${i}`}
+                                className={`text-sm flex flex-col sm:flex-row sm:justify-between mb-2 p-2 rounded-lg ${
+                                  esDestino ? "bg-green-900/30" : "bg-neutral-700/40"
+                                }`}
+                              >
+                                <span className={esDestino ? "text-green-400 font-medium" : "text-gray-300 font-medium"}>
+                                  {esDestino ? "+" : "-"}
+                                  {vout.valueBtc} BTC
+                                </span>
+                                <span className="text-gray-400 text-xs mt-1 sm:mt-0 break-all">
+                                  {esDestino ? (
+                                    <span><span className="font-semibold text-white">A tu dirección</span></span>
+                                  ) : esCambio ? (
+                                    <span><span className="font-semibold text-white">Cambio:</span> {vout.scriptpubkey_address}</span>
+                                  ) : (
+                                    <span><span className="font-semibold text-white">A:</span> {vout.scriptpubkey_address}</span>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Resumen y fee */}
+                        <div className="flex flex-col gap-1 text-sm pt-3 border-t border-neutral-700 mt-2">
+                          {/* Total enviado o recibido */}
+                          <div className={`flex justify-between ${
+                            tipo === "Enviado" ? "text-red-400" :
+                            tipo === "Transferencia interna" ? "text-yellow-400" :
+                            "text-green-400"
+                          } font-semibold`}>
+                            <span>
+                              {(() => {
+                                if (tipo === "Enviado") {
+                                  const totalEnviado = tx.vout
+                                    .filter(vout => vout.scriptpubkey_address !== direccion && !vout.esCambio)
+                                    .reduce((sum, vout) => sum + Number(vout.valueBtc), 0);
+                                  return `-${totalEnviado.toFixed(7)} BTC ≈ ${(totalEnviado * precioActCrypto).toFixed(2)} EUR`;
+                                } else {
+                                  const totalRecibido = tx.vout
+                                    .filter(vout => vout.scriptpubkey_address === direccion)
+                                    .reduce((sum, vout) => sum + Number(vout.valueBtc), 0);
+                                  return `+${totalRecibido.toFixed(7)} BTC ≈ ${(totalRecibido * precioActCrypto).toFixed(2)} EUR`;
+                                }
+                              })()}
+                            </span>
+                            {/* Fee */}
+                            {tipo !== "Transferencia interna" && (
+                                <span className="flex justify-between text-gray-400 text-xs font-medium">Comisión: {tx.feeBtc} BTC ≈ {(Number(tx.feeBtc) * precioActCrypto).toFixed(2)} EUR</span>
+                            )}
                           </div>
-                          {tipo !== "Transferencia interna" && (
-                            <div>
-                              <strong>Fee:</strong> {tx.feeBtc} BTC ≈{" "}
-                              {(Number(tx.feeBtc) * precioActCrypto).toFixed(2)} EUR
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
@@ -462,8 +510,103 @@ function CuentaDatos() {
                   {fondosEth?.page === 1 && fondosEth.transactions.length === 0 ? (
                     <p className="text-gray-400">No se encontraron transacciones en esta cuenta.</p>
                   ) : (
-                    <h1>TO DO</h1>
+                    fondosEth?.transactions.map((tx, idx) => {
+                      const direccion = fondosEth.address.toLowerCase();
+                      const recibido = tx.to === direccion;
+                      // const enviado = tx.from === direccion;
+
+                      const tipo = recibido ? 'Recibido' : 'Enviado';
+
+                      const icon =
+                        tipo === "Recibido" ? <ArrowDown className={`text-green-400`} />
+                        : <ArrowUp className={`text-red-400`} />
+                      
+                      return (
+                        <div
+                          key={`${idx}`}
+                          className={`rounded-xl p-4 mb-4 shadow bg-neutral-800 border-l-4 ${
+                            tipo === "Recibido"
+                              ? "border-green-500"
+                              : "border-red-500"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3">
+                              {icon}
+                              <span className="font-semibold text-white">{tipo}</span>
+                            </div>
+                            <span className="text-xs text-gray-400">
+                              {Number(tx.confirmations) > 0 && tx.txreceipt_status === "1"
+                                ? tx.fecha
+                                : "No confirmado"}
+                            </span>
+                          </div>
+
+                          <div className="text-sm text-gray-300 break-all mb-4">
+                              <div className="text-[13px] mb-1">
+                                {tipo === 'Enviado' ? `Hacia: ${tx.to}` : `De: ${tx.from}`}
+                              </div>
+                            <a
+                              href={`https://${
+                                redSeleccionada === "mainnet" ? "" : "sepolia."
+                              }etherscan.io/tx/${tx.hash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 underline hover:text-blue-300 transition"
+                            >
+                              {tx.hash}
+                            </a>
+                          </div>
+
+                          <div className="flex justify-between text-sm border-t pt-3 border-neutral-700">
+                              <div
+                                className={`${
+                                  tipo === "Enviado"
+                                    ? "text-red-400"
+                                    : "text-green-500"
+                                }`}
+                              >
+                                {tipo === "Enviado" ? "-" : "+"}
+                                {tx.valueEth.toFixed(7)} ETH ≈{" "}
+                                {(Number(tx.valueEth) * precioActCrypto).toFixed(2)} EUR
+                              </div>
+                              <div>
+                                <strong>Comisión:</strong> {tx.feeEth.toFixed(7)} ETH ≈{" "}
+                                {(Number(tx.feeEth) * precioActCrypto).toFixed(2)} EUR
+                              </div>
+                          </div>
+                        </div>
+                      );
+                    }) 
                   )}
+                  {!fondosEth || !(fondosEth.transactions.length === 0 && fondosEth.page === 1) && (
+                    <div className="flex justify-between items-center mt-6">
+                      <button
+                        disabled={!fondosEth || (fondosEth.transactions.length === 0 && fondosEth.page === 1) || fondosEth.page === 1}
+                        onClick={handlePaginaAnterior}
+                        className="text-white px-4 py-2 bg-neutral-700 rounded-lg border-gray-500 border hover:bg-neutral-600 transition cursor-pointer
+                        disabled:hover:bg-neutral-600 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-300"                   
+                      >
+                        <ArrowLeft className="w-4 h-6"/>
+                      </button>
+
+                      <span className="text-gray-300 font-medium">
+                        Página {fondosEth?.page}
+                      </span>
+
+                      <button
+                        disabled={!fondosEth || fondosEth.transactions.length < 15}
+                        onClick={handlePaginaSiguiente}
+                        className="text-white px-4 py-2 bg-neutral-700 border border-gray-500 rounded-lg hover:bg-neutral-600 transition cursor-pointer
+                        disabled:hover:bg-neutral-600 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-300"
+                      >
+                        <ArrowRight className="w-4 h-6"/>
+                      </button>
+                    </div>
+                  )}
+                  {fondosEth?.transactions.length === 0 && fondosEth.page !== 1 &&
+                    <p className="text-gray-400">No se encontraron transacciones en esta página.</p>
+                  }
                 </>
               )}
             </>

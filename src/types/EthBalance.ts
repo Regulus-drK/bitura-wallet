@@ -1,4 +1,5 @@
 import BigNumber from "bignumber.js"; // Uso de BigNumber para evitar errores de cálculo (los números pueden ser demasiado grandes)
+import { formatBlockTimeSpain } from "./BtcBalance";
 
 export interface EthBalance {
   status: string;
@@ -42,6 +43,7 @@ export interface ParsedEthTx extends EthTx {
   feeWei: BigNumber;  // gasUsed * gasPrice en Wei
   feeEth: BigNumber;  // fee convertido a ETH
   valueEth: BigNumber;
+  fecha: string;
 }
 
 export interface ParsedEthResponse {
@@ -70,7 +72,8 @@ export function parseEthResponse(response: EthResponse): ParsedEthResponse {
       ...tx,
       feeWei,
       feeEth: feeWei.dividedBy(WEI_IN_ETH),
-      valueEth: valueWei.dividedBy(WEI_IN_ETH),  // Por último, conversión del "value" en Wei de la Tx a Ether
+      valueEth: valueWei.dividedBy(WEI_IN_ETH),  // conversión del "value" en Wei de la Tx a Ether
+      fecha: formatBlockTimeSpain(Number(tx.timeStamp))!,
     };
   });
 

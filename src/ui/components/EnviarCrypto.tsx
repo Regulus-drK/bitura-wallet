@@ -246,10 +246,26 @@ function EnviarCrypto() {
         if (comision === "" || isNaN(Number(comision))) {
             setCantidadComisionEur(0);
         } else {
-            const fee = Number(comision);
-            const feeEur = wallet?.tipoMoneda === 'BTC'
-                ? (fee / 100_000_000) * precioActCrypto
-                : (Number(ethFee)) * precioActCrypto;
+            let feeEur = 0;
+            
+            if (wallet?.tipoMoneda === 'BTC') {
+                feeEur = (Number(comision) / 100_000_000) * precioActCrypto;
+            } else {
+                try {
+                    const feeInWei = BigInt(comision); // Comisión en wei (gasPrice)
+                    const gasLim = BigInt(gasLimit);   // gasLimit como bigint
+                    const totalFeeWei = feeInWei * gasLim; // Total fee en wei
+
+                    const feeInEth = parseFloat(ethers.formatEther(totalFeeWei)); // ETH como número
+                    setEthFee(feeInEth.toString());
+
+                    feeEur = feeInEth * precioActCrypto;
+                } catch (err) {
+                    console.error("Error calculando comisión:", err);
+                    feeEur = 0;
+                }
+            }
+
             setCantidadComisionEur(feeEur);
             if (feeEur > 30) {
                 setFeeMuyAltoDetectado(true);
@@ -472,7 +488,7 @@ function EnviarCrypto() {
             : `${saldo.toFixed(7)} ${w.tipoMoneda}`;
 
         const baseStyle = "flex items-center justify-between px-5 py-3 rounded-xl transition";
-        const bgStyle = isEnabled ? "bg-neutral-700 hover:bg-neutral-600 cursor-pointer" : "bg-neutral-900 opacity-60 cursor-not-allowed";
+        const bgStyle = isEnabled ? "bg-neutral-700 hover:bg-neutral-600 cursor-pointer border border-neutral-600" : "bg-neutral-900 opacity-60 cursor-not-allowed border border-neutral-700";
         const textStyle = isEnabled ? "text-white" : "text-gray-500";
 
         return (
@@ -526,7 +542,7 @@ function EnviarCrypto() {
                     <>
                         <p className="text-sm text-gray-300 mb-4 text-center">Seleccione una cuenta con saldo para enviar fondos:</p>
 
-                        <div className="bg-neutral-800 rounded-xl border-1 border-gray-500 p-4 w-full max-w-[950px] min-w-[300px] max-h-[430px] overflow-y-auto shadow-lg">
+                        <div className="bg-gradient-to-r from-neutral-900/50 to-neutral-700/30 rounded-xl border-1 border-gray-500 p-4 w-full max-w-[950px] min-w-[300px] max-h-[430px] overflow-y-auto shadow-lg">
                             {(walletsBTC.length + walletsETH.length === 0) ? (
                                 <h1 className="text-white bg-neutral-700 mb-2 rounded-xl px-6 py-4 flex text-center align-center justify-center text-xl">
                                     No se han encontrado cuentas. Cree una para enviar fondos.
@@ -945,11 +961,19 @@ function EnviarCrypto() {
                     <div className="text-white text-lg max-w-md break-words text-center px-4">
                         <h1>{txError}</h1>
                     </div>
+                    {txError.includes("TIMEOUT") && (
+                        <div className="text-white text-lg">
+                            <h1>Tiempo expirado al intentar enviar la transacción. Si este error prosigue, se debe a que el nodo de la red se encuentra saturado.</h1>
+                            {redSeleccionada === 'testnet' && (
+                                <h1 className="text-amber-400 mt-5">Se encuentra operando en Testnet. Es frecuente que a veces la red de pruebas se encuentre saturada. Inténtelo más tarde.</h1>
+                            )}
+                        </div>
+                    )}
                     <div className="text-white text-lg">
                         <h1>Por favor, vuelva a intentarlo.</h1>
                     </div>
                     {/* Botón Home */}
-                    <div className="mt-5 flex flex-col items-center text-center">
+                    <div className="mt-5 flex flex-col items-center text-center gap-4">
                         <button
                             onClick={() => {
                                 ventanaCantidadAEnviar();

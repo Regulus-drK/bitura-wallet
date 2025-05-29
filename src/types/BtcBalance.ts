@@ -124,7 +124,7 @@ function satoshisToBtc(sat: number): string {
 }
 
 // Función para formatear timestamp a "DD/MM/AAAA" con horario de España
-function formatBlockTimeSpain(timestamp?: number): string | undefined {
+export function formatBlockTimeSpain(timestamp?: number): string | undefined {
   if (!timestamp) return undefined;
   const date = new Date(timestamp * 1000);
   return new Intl.DateTimeFormat('es-ES', {

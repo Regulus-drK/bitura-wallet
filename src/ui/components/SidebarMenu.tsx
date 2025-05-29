@@ -35,7 +35,8 @@ const SidebarMenu = () => {
                 to="/inicio/cuentas" // Meramente informativo para saber a dónde redirige
                 active={location.pathname === "/inicio/cuentas" || 
                     location.pathname === '/inicio/cuentas/agregar' ||
-                    location.pathname === '/inicio/cuentas/datos-cuenta'}
+                    location.pathname === '/inicio/cuentas/datos-cuenta' ||
+                    location.pathname === '/inicio/cuentas/datos-cuenta/ajustes'}
                 onClick={() => handleLocation("/inicio/cuentas")} 
             />
             <SidebarButton 

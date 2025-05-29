@@ -3,19 +3,11 @@ import { Outlet, useLocation } from "react-router-dom";
 import { enableMenu } from '../../services/apiService';
 import { walletShouldBeConfigured } from '../../hooks/walletShouldBeConfigured';
 import { useWindowSize } from '../../hooks/useWindowSize';
-// import { useAuth } from '../../context/AuthContext';
 import SidebarMenu from '../components/SidebarMenu';
 import Spinner from '../components/Spinner';
 import { AnimatePresence } from 'framer-motion';
-// import { crearYGuardarWalletBtc } from '../../services/walletService';
-// import { useWallets } from '../../context/WalletContext';
 
 function Inicio() {
-  // const { password } = useAuth(); // Password global guardada en context
-  // const { wallets } = useWallets();
-
-  // const [bitcoinAddress, setBitcoinAddress] = useState<string | null>(null);
-
   walletShouldBeConfigured(true);
 
   const location = useLocation();

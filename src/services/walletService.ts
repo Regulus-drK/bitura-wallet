@@ -1042,7 +1042,7 @@ export async function enviarEth(
 
     try {
         const response = await signer.sendTransaction(tx);
-        await response.wait(1, 90000);
+        await response.wait(1, 180000);
         console.log("Transacción enviada con éxito:", response.hash);
         return response.hash;
     } catch (error: any) {

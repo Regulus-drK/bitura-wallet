@@ -98,7 +98,7 @@ function RecibirCrypto() {
     // Función para mostrar el cuadro de la wallet
     const renderWalletItem = (w: WalletInfo, icon: string) => {
         const baseStyle = "flex items-center justify-between px-5 py-3 rounded-xl transition";
-        const bgStyle = "bg-neutral-700 hover:bg-neutral-600 cursor-pointer";
+        const bgStyle = "bg-neutral-700 hover:bg-neutral-600 cursor-pointer border border-neutral-600";
         const textStyle = "text-white";
 
         return (
@@ -149,7 +149,7 @@ function RecibirCrypto() {
                 <>
                     <p className="text-sm text-gray-300 mb-4 text-center">Seleccione una cuenta para recibir fondos:</p>
 
-                    <div className="bg-neutral-800 rounded-xl border-1 border-gray-500 p-4 w-full max-w-[950px] min-w-[300px] max-h-[430px] overflow-y-auto shadow-lg">
+                    <div className="bg-gradient-to-r from-neutral-900/50 to-neutral-700/30 rounded-xl border-1 border-gray-500 p-4 w-full max-w-[950px] min-w-[300px] max-h-[430px] overflow-y-auto shadow-lg">
 
                         {(walletsBTC.length + walletsETH.length === 0) ? (
                             <h1 className="text-white bg-neutral-700 mb-2 rounded-xl px-6 py-4 flex text-center align-center justify-center text-xl">
