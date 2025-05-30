@@ -16,6 +16,7 @@ function RecibirCrypto() {
     const navigate = useNavigate();
     const { password } = useAuth();
     const [wallet, setWallet] = useState<WalletInfo | undefined>(location.state?.wallet);
+    const [comesFromCuentaDatos] = useState<boolean | undefined>(location.state?.backCuentaDatos);
     const { wallets } = useWallets();
     const [walletReceived, setWalletReceived] = useState<boolean>(false);
     const [redSeleccionada, setRedSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
@@ -49,6 +50,10 @@ function RecibirCrypto() {
     const handleChooseWallet = (chosenWallet: WalletInfo) => {
         setWallet(chosenWallet);
     };
+
+    const handleVolverDatosCuenta = async () => {
+        navigate('/inicio/cuentas/datos-cuenta', { state: { wallet } });
+    }
 
     const handlePublicAddress = async () => {
         setDireccionPublica(wallet!.direccionPublica);
@@ -182,7 +187,13 @@ function RecibirCrypto() {
                 {/* Flecha de volver */}
                 <div className="absolute -left-5 -top-15">
                     <ArrowLeft
-                    onClick={() => resetVariables()}
+                    onClick={() => {
+                        if (comesFromCuentaDatos === true) {
+                            handleVolverDatosCuenta();
+                        } else {
+                            resetVariables();
+                        }
+                    }}
                     className="w-7 h-7 text-gray-400 hover:text-green-500 transition duration-200 cursor-pointer"
                     />
                 </div>

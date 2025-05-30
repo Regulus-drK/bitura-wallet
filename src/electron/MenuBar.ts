@@ -1,11 +1,11 @@
 import { BrowserWindow, Menu, app } from 'electron';
-import { ventanaConfirmarDeleteConfigFiles } from './util.js';
+import { isDev, ventanaConfirmarDeleteConfigFiles } from './util.js';
 
 //  Lógica común para personalizar el panel "Acerca de" en macOS
 if (process.platform === 'darwin') {
   app.setAboutPanelOptions({
     applicationName: 'Bitura Wallet',
-    applicationVersion: '0.1.0',
+    applicationVersion: '1.0.0',
     copyright: '© 2025 Jorge Puentes',
     credits: 'Desarrollado por Jorge Puentes'
   });
@@ -32,8 +32,7 @@ function getMacAppMenu(): Electron.MenuItemConstructorOptions | null {
 }
 
 // Menú Editar para macOS
-function getEditMenu(): Electron.MenuItemConstructorOptions {
-  if (process.platform === 'darwin') {
+function getMacEditMenu(): Electron.MenuItemConstructorOptions {
     return {
       label: 'Editar',
       submenu: [
@@ -48,17 +47,6 @@ function getEditMenu(): Electron.MenuItemConstructorOptions {
         { role: 'selectAll' }
       ]
     };
-  } else {
-    return {
-      label: 'Test',
-      submenu: [
-        {
-          label: 'Random',
-          click: () => null
-        }
-      ]
-    };
-  }
 }
 
 // Menú principal con todo
@@ -67,42 +55,76 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
         label: 'Archivo',
         submenu: [
             {
-                id: 'test',
+                id: 'frase-semilla',
                 label: 'Restaurar frase semilla',
                 click: () => {
                     ventanaConfirmarDeleteConfigFiles();
                 }
-            },
-            {
-                label: 'Consola de desarrollador',
-                accelerator: 'Ctrl+Shift+I',
-                click: () => {
-                    const win = BrowserWindow.getFocusedWindow();
-                    if (win) {
-                        win.webContents.toggleDevTools();
-                    }
-                }
-            },
-            {
-                label: 'Recargar (dev)',
-                accelerator: 'Ctrl+R',
-                click: () => {
-                    const win = BrowserWindow.getFocusedWindow();
-                    if (win) {
-                        win.reload();
-                    }
-                }
-            },
+            }
+            // **SOLO DEV**
+            // {
+            //     label: 'Consola de desarrollador',
+            //     accelerator: 'Ctrl+Shift+I',
+            //     click: () => {
+            //         const win = BrowserWindow.getFocusedWindow();
+            //         if (win) {
+            //             win.webContents.toggleDevTools();
+            //         }
+            //     }
+            // },
+            // {
+            //     label: 'Recargar (dev)',
+            //     accelerator: 'Ctrl+R',
+            //     click: () => {
+            //         const win = BrowserWindow.getFocusedWindow();
+            //         if (win) {
+            //             win.reload();
+            //         }
+            //     }
+            // },
         ],
-    },
-    getEditMenu()
+    }
 ];
+
+// Menú solo para desarrollo con todo
+function getMenuDev(): Electron.MenuItemConstructorOptions {
+  return {
+    label: 'Debug',
+    submenu: [
+        // **SOLO DEV**
+        {
+            label: 'Consola de desarrollador',
+            accelerator: 'Ctrl+Shift+I',
+            click: () => {
+                const win = BrowserWindow.getFocusedWindow();
+                if (win) {
+                    win.webContents.toggleDevTools();
+                }
+            }
+        },
+        {
+            label: 'Recargar (dev)',
+            accelerator: 'Ctrl+R',
+            click: () => {
+                const win = BrowserWindow.getFocusedWindow();
+                if (win) {
+                    win.reload();
+                }
+            }
+        },
+    ],
+  }
+}
 
 // Si estamos en macOS, añadimos el menú de la app al principio
 const macMenu = getMacAppMenu();
 if (macMenu) {
   menuTemplate.unshift(macMenu);
+  menuTemplate.push(getMacEditMenu());
 }
+
+const menuDev = getMenuDev();
+if (isDev()) menuTemplate.push(menuDev);
 
 export const MenuBar = {
   menuTemplate,

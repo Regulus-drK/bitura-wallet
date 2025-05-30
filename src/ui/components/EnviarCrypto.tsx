@@ -20,6 +20,7 @@ function EnviarCrypto() {
     const { wallets, setWallets } = useWallets();
     const { password } = useAuth();
     const [wallet, setWallet] = useState<WalletInfo | undefined>(location.state?.wallet);
+    const [comesFromCuentaDatos] = useState<boolean | undefined>(location.state?.backCuentaDatos);
     const [walletReceived, setWalletReceived] = useState<boolean>(false);
     const [saldos, setSaldos] = useState<Record<string, BigNumber | null>>({});
     const [redSeleccionada, setRedSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
@@ -27,7 +28,7 @@ function EnviarCrypto() {
     const [isValidAddress, setIsValidAddress] = useState<boolean | null>(null);
     const [isSameAddress, setIsSameAddress] = useState<boolean>(false);
     const [saldoWalletComprobado, setSaldoWalletComprobado] = useState<boolean>(false);
-    const [precioActCrypto, setPrecioActCrypto] = useState<number>(0);
+    const [precioActCrypto, setPrecioActCrypto] = useState<number>(1);
 
     const [cantidadAenviar, setCantidadAenviar] = useState<string>("");
     const [cantidadAenviarEur, setCantidadAenviarEur] = useState<number>(0);
@@ -62,7 +63,7 @@ function EnviarCrypto() {
         } else {
             setWalletReceived(true);
         }
-        cargarPreciosCrypto()
+        listarPrecios();
     }, [wallet]);
 
     useEffect(() => {
@@ -155,6 +156,10 @@ function EnviarCrypto() {
             setWallet(chosenWallet);
         }
     };
+
+    const handleVolverDatosCuenta = async () => {
+        navigate('/inicio/cuentas/datos-cuenta', { state: { wallet } });
+    }
 
     const handleCheckAddress = async () => {
         if (wallet?.direccionPublica === receiptAddress) {
@@ -286,6 +291,7 @@ function EnviarCrypto() {
                 }
             } catch (err) {
                 console.error('Error al ajustar enviar todo BTC: ', err);
+                setComision('500');
                 setFalloAlCalcularFee(true);
             }
         } else {
@@ -305,6 +311,7 @@ function EnviarCrypto() {
                 }
             } catch (err) {
                 console.error('Error al ajustar enviar todo ETH: ', err);
+                setComision('20000000');
                 setFalloAlCalcularFee(true);
             }
         }
@@ -470,7 +477,7 @@ function EnviarCrypto() {
         setCantidadAenviarEur(0);
         setComision("");
         setCantidadComisionEur(0);
-        setPrecioActCrypto(0);
+        setPrecioActCrypto(1);
         setSaldoInsuficiente(null);
         setSaldoConFeeInsuficiente(null);
         setShouldExecuteTransaction(false);
@@ -576,7 +583,13 @@ function EnviarCrypto() {
                             {/* Flecha izquierda - posicionada absolutamente a la izquierda */}
                             <div className="absolute -top-15 -left-5">
                                 <ArrowLeft
-                                    onClick={() => resetVariables()}
+                                    onClick={() => {
+                                        if (comesFromCuentaDatos === true) {
+                                            handleVolverDatosCuenta();
+                                        } else {
+                                            resetVariables();
+                                        }
+                                    }}
                                     className="w-7 h-7 text-gray-400 hover:text-green-500 transition duration-200 cursor-pointer ml-4"
                                 />
                             </div>
@@ -627,7 +640,7 @@ function EnviarCrypto() {
                             </div>
                             <p className="text-md font-medium text-gray-300">
                                 Saldo: {saldos[wallet!.nombre] ? saldos[wallet!.nombre]?.toFixed(7) : wallet?.ultSaldoGuardado} {wallet?.tipoMoneda} {' '}
-                                ≈ {precioActCrypto !== 0 ? ((Number(saldos[wallet!.nombre]) * precioActCrypto).toFixed(2)) : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
+                                ≈ {precioActCrypto !== 1 && saldos[wallet!.nombre] ? ((Number(saldos[wallet!.nombre]) * precioActCrypto).toFixed(2)) : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
                             </p>
                         </div>
 
@@ -823,7 +836,7 @@ function EnviarCrypto() {
                                 )}
                                 {falloAlCalcularFee && (
                                     <h2 className="text-center mt-4 text-lg font-semibold text-red-500 select-none">
-                                        Ha ocurrido un fallo al calcular la comisión. Si el error persiste, puede que sea porque la comisión de red sea más alta que su saldo.
+                                        Ha ocurrido un fallo al calcular la comisión. Si el error persiste, puede que sea porque la comisión de red sea más alta que su saldo o que el servicio no esté disponible.
                                     </h2>
                                 )}
                                 {feeMuyAltoDetectado && (

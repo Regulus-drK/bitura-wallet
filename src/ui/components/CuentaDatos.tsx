@@ -39,6 +39,10 @@ function CuentaDatos() {
     navigate(path, { state: { wallet } });
   }
 
+  const handleNavigateEnviarRecibir = async (path: string) => {
+    navigate(path, { state: { wallet, backCuentaDatos: true } });
+  }
+
   const loadPricesYBalances = async () => {
     try {
       // Reset de variables para hacer aparecer de nuevo los spinner e indicar que está cargando de nuevo
@@ -328,7 +332,7 @@ function CuentaDatos() {
         <div className="flex justify-center text-xl font-bold gap-6 mb-4">
             {/* Botón Enviar */}
             <button
-                onClick={() => handleNavigate("/inicio/enviar")}
+                onClick={() => handleNavigateEnviarRecibir("/inicio/enviar")}
                 disabled={saldos[wallet.nombre] ? saldos[wallet.nombre].toNumber() <= 0 : true}
                 className={`w-[35%] min-w-[240px] px-6 py-3 rounded-2xl justify-center shadow-md border select-none flex items-center gap-2 transition duration-300
                     ${(saldos[wallet.nombre] ? saldos[wallet.nombre].toNumber() <= 0 : true) 
@@ -341,7 +345,7 @@ function CuentaDatos() {
             </button>
             {/* Botón Recibir */}
             <button
-                onClick={() => handleNavigate("/inicio/recibir")}
+                onClick={() => handleNavigateEnviarRecibir("/inicio/recibir")}
                 className="group w-[35%] min-w-[240px] px-6 py-3 rounded-2xl justify-center shadow-md border select-none flex items-center gap-2 transition duration-300
                 border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-700"
             >
