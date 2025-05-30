@@ -1,6 +1,6 @@
 import type { CryptoAPIResponse } from "../types/CryptoPrices";
 import type { EthResponse } from "../types/EthBalance";
-import type { WalletInfo } from "../types/WalletInfo";
+import type { PortfolioData, WalletInfo } from "../types/BituraStore";
 
 export function closeApp() {
   window.api.closeApp();
@@ -127,4 +127,12 @@ export async function deleteWallet(nombre: string, red?: string): Promise<boolea
 
 export async function deleteConfigFiles(inputPassword: string): Promise<boolean> {
   return window.api.deleteConfigFiles(inputPassword);
+}
+
+export async function getPortfolio(): Promise<PortfolioData> {
+  return await window.api.getPortfolio();
+}
+
+export async function updatePortfolio(datosActualizados: PortfolioData): Promise<boolean> {
+  return await window.api.updatePortfolio(datosActualizados);
 }

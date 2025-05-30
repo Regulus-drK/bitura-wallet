@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
-import { WalletInfo } from './WalletInfo.js';
+import { PortfolioData, WalletInfo } from './BituraStore.js';
 
 contextBridge.exposeInMainWorld('api', {
     closeApp: () => ipcRenderer.send('app/close'),
@@ -82,5 +82,7 @@ contextBridge.exposeInMainWorld('api', {
             .catch(error => {
                 console.error('Error al validar la contraseña', error);
             });
-    }
+    },
+    getPortfolio: () => ipcRenderer.invoke('store:getPortfolio'),
+    updatePortfolio: (datosActualizados: PortfolioData) => ipcRenderer.invoke('store:updatePortfolio', datosActualizados)
 });

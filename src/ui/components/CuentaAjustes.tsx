@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import TransiccionPagina from "./TransiccionPagina";
 import { ArrowLeft, CheckCircle, CircleX, Trash2, X } from "lucide-react";
-import type { WalletInfo } from "../../types/WalletInfo";
+import type { WalletInfo } from "../../types/BituraStore";
 import { useEffect, useRef, useState } from "react";
 import { useWallets } from "../../context/WalletContext";
 import { deleteWallet, getAllWallets, getRedSeleccionada, updateWallet } from "../../services/apiService";

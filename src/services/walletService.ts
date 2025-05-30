@@ -6,7 +6,7 @@ import ECPairFactory from 'ecpair';
 import { ethers } from 'ethers';
 import BigNumber from "bignumber.js";
 import { Buffer } from 'buffer';
-import type { WalletInfo } from '../types/WalletInfo';
+import type { WalletInfo } from '../types/BituraStore';
 import { addWallet, updateWallet } from './apiService';
 import { formatTxsBtc, type BtcAddressUtxo, type BtcTransactionFormatted, type BtcTransactionRaw} from '../types/BtcBalance';
 

@@ -1,5 +1,5 @@
 import {  useLocation, useNavigate } from "react-router-dom";
-import type { WalletInfo } from "../../types/WalletInfo";
+import type { WalletInfo } from "../../types/BituraStore";
 import btcIcon from "../../assets/crypto/bitcoin.png";
 import ethIcon from "../../assets/crypto/ether.png";
 import { useEffect, useRef, useState } from "react";

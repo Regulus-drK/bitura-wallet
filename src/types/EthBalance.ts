@@ -61,7 +61,9 @@ export function parseEthResponse(response: EthResponse): ParsedEthResponse {
   const balanceWei = new BigNumber(response.balance.result);
   const balanceEth = balanceWei.dividedBy(WEI_IN_ETH);
 
-  const transactions: ParsedEthTx[] = (response.transactions?.result ?? []).map(tx => {
+  const txs = response.transactions?.result;
+  const transactions: ParsedEthTx[] = Array.isArray(txs)
+    ? txs.map(tx => {
     const gasUsed = new BigNumber(tx.gasUsed);
     const gasPrice = new BigNumber(tx.gasPrice);
     // Añadir el value calculado de la Tx
@@ -75,7 +77,8 @@ export function parseEthResponse(response: EthResponse): ParsedEthResponse {
       valueEth: valueWei.dividedBy(WEI_IN_ETH),  // conversión del "value" en Wei de la Tx a Ether
       fecha: formatBlockTimeSpain(Number(tx.timeStamp))!,
     };
-  });
+  })
+  : [];
 
   return {
     address: response.address,

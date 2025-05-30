@@ -4,12 +4,25 @@ import path from 'path';
 import { isDev, getJdkPath, getJarPath, savePassword, getPassword, saveMnemonic, getMnemonic, deleteConfigFiles } from './util.js';
 import { spawn } from 'child_process';
 import { EmptyMenu, MenuBar } from './MenuBar.js';
-import { WalletStore, WalletInfo } from './WalletInfo.js';
+import { BituraStore, WalletInfo, PortfolioData } from './BituraStore.js';
 
-const store = new Store<WalletStore>({
+const defaultPortfolio: PortfolioData = {
+  valorTotal: 0,
+  btc: {
+    cantidad: 0,
+    valor: 0
+  },
+  eth: {
+    cantidad: 0,
+    valor: 0
+  }
+};
+
+const store = new Store<BituraStore>({
   defaults: {
     walletConfigured: false,
-    redSeleccionada: 'mainnet'
+    redSeleccionada: 'mainnet',
+    portfolio: defaultPortfolio
   }
 });
 
@@ -375,6 +388,15 @@ app.on("ready", () => {
         deleteConfigFiles();
         return true;
     });
+
+    ipcMain.handle('store:getPortfolio', () => {
+        return store.get('portfolio');
+    })
+
+    ipcMain.handle('store:updatePortfolio', (_event, datosActualizados: PortfolioData) => {
+        store.set('portfolio', datosActualizados);
+        return true;
+    })
 });
 
 // Cierra completamente la aplicación excepto en macOS

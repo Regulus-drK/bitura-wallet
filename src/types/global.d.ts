@@ -1,7 +1,7 @@
 import type { BtcResponse } from "./BtcBalance";
 import type { CryptoAPIResponse } from "./CryptoPrices";
 import type { EthResponse } from "./EthBalance";
-import type { WalletInfo } from "./WalletInfo";
+import type { PortfolioData, WalletInfo } from "./BituraStore";
 
 declare global {
   interface Window {
@@ -40,6 +40,8 @@ declare global {
       updateWallet: (nombre: string, datosActualizados: Partial<WalletInfo>, red?: string) => Promise<boolean>;
       deleteWallet: (nombre: string, red?: string) => Promise<boolean>;
       deleteConfigFiles: (inputPassword: string) => Promise<boolean>;
+      getPortfolio: () => Promise<PortfolioData>;
+      updatePortfolio: (datosActualizados: PortfolioData) => Promise<boolean>;
     };
   }
 }

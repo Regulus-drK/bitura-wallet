@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import type { WalletInfo } from "../../types/WalletInfo";
+import type { WalletInfo } from "../../types/BituraStore";
 import { useEffect, useState } from "react";
 import Spinner from "./Spinner";
 import { useWallets } from "../../context/WalletContext";

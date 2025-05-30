@@ -1,4 +1,4 @@
-import type { WalletInfo } from "../../types/WalletInfo";
+import type { WalletInfo } from "../../types/BituraStore";
 import { useWallets } from "../../context/WalletContext";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";

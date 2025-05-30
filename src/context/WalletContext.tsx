@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { getAllWallets } from '../services/apiService';
-import type { WalletInfo } from '../types/WalletInfo';
+import type { WalletInfo } from '../types/BituraStore';
 
 
 const WalletContext = createContext<{

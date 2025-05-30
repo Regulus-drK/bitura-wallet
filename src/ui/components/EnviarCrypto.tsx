@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useWallets } from "../../context/WalletContext";
 import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
-import type { WalletInfo } from "../../types/WalletInfo";
+import type { WalletInfo } from "../../types/BituraStore";
 import BigNumber from "bignumber.js";
 import { ethers } from 'ethers';
 import { consultarDireccion, getAllWallets, getMnemonic, getRedSeleccionada as getRedSeleccionada, listarPrecios, updateWallet } from "../../services/apiService";
