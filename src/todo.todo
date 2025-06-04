@@ -1,7 +1,0 @@
-Creación de cuentas y derivación claves privadas/públicas:
-    ✔ Al crear una cuenta, se guardará el indice de la clave privada y se mostrará el saldo de esa cuenta. @done(25-05-20 18:16)
-    ☐ Si se tienen varias cuentas, en el dashboard se mostrará el resumen total de saldo de todas juntas
-    ☐ Al entrar a los datos de una cuenta, comprobar saldos y mostrar Txs de alguna manera eficiente
-
-QoL:
-    ☐ Poner algún tipo de advertencia o aviso si el usuario no tiene o pierde conexión a internet
