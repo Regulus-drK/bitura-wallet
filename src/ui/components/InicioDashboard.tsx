@@ -385,7 +385,7 @@ function InicioDashboard() {
                             <h3 className="text-2xl font-bold text-white mb-2">Portfolio vacío</h3>
                             <p className="text-gray-300 mb-6">Aún no has creado ninguna cuenta. Comienza tu viaje cripto ahora mismo.</p>
                             <button 
-                                className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg cursor-pointer"
+                                className="bg-gradient-to-r select-none from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg cursor-pointer"
                                 onClick={() => navigate("/inicio/cuentas/agregar")}
                             >
                                 Crear mi primera wallet

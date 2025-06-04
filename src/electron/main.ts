@@ -280,7 +280,7 @@ app.on("ready", () => {
 
         const oldWindow = BrowserWindow.getFocusedWindow();
         if (oldWindow) {
-            oldWindow.on('closed', () => {
+            oldWindow.on('close', () => {
                 const newWindow = createMainWindow();
                 newWindow.webContents.once('did-finish-load', () => {
                     newWindow.webContents.send('wallet:configChanged', value);

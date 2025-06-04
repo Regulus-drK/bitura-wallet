@@ -139,7 +139,7 @@ function CuentaAjustes() {
             await new Promise(resolve => setTimeout(resolve, 500));
             
             // Navegar después de borrar
-            navigate("/inicio/cuentas/");
+            navigate("/inicio/cuentas");
         } catch (error) {
             console.error("Error al borrar cuenta:", error);
         } finally {

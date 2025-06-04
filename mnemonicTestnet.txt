@@ -1,0 +1,15 @@
+Usar este mnemonic SOLO para realizar pruebas con los fondos que hay en ellas.
+
+Pasos de uso:
+- Activar Testnet en la aplicación
+
+Cuentas con fondos:
+- Cuenta índice 0 de Bitcoin Native SegWit
+    - Primera dirección pública: tb1qhsv3fpj4qkfyh6tzpm42y62gwapf2whyupumxg
+- Cuenta índice 0 de Ethereum (Sepolia testnet)
+    - Dirección pública: 0x28B5E5C341709986F9Ef59f995075eFBE180db98
+
+-----------------------------------------------------------------------
+----------------------------- MNEMONIC --------------------------------
+into swing solid short buzz spy tornado tank pupil garment meat repeat
+-----------------------------------------------------------------------
