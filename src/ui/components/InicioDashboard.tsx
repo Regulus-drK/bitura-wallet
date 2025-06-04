@@ -4,7 +4,7 @@ import btcIcon from "../../assets/crypto/bitcoin.png";
 import ethIcon from "../../assets/crypto/ether.png";
 import type { CryptoAPIResponse, CryptoData } from "../../types/CryptoPrices";
 import Spinner from "./Spinner";
-import { ArrowUp, ArrowDown, TrendingUp, TrendingDown, Sparkles, ChartLine, PiggyBank, RefreshCw } from "lucide-react";
+import { ArrowUp, ArrowDown, TrendingUp, TrendingDown, Sparkles, ChartLine, PiggyBank, RefreshCw, Landmark } from "lucide-react";
 import { useWallets } from "../../context/WalletContext";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -73,7 +73,10 @@ function InicioDashboard() {
         // Actualizar precios cada 5 min
         // Configurar el intervalo y guardar la referencia
         intervalRef.current = setInterval(obtenerPrecios, 300000);
-        
+        // No es necesario llamar a otras funciones dentro del useEffect de
+        // obtenerSaldos ya que tiene de dependencia datosPrecioActCrypto, entonces se ejecutará
+        // también cuando el valor de este cambie, haciendo todo en cadena
+
         return () => {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
@@ -190,12 +193,18 @@ function InicioDashboard() {
             }
         }
 
-        cargarDatosPortfolio();
+        if (wallets.length !== 0) {
+            cargarDatosPortfolio();
+        } else {
+            const fecha = new Date();
+            setUltSync(fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit'})); 
+            setIsRefreshing(false);
+        }
 
         return () => {
             isCancelled = true;
         };
-    }, [password, redSeleccionada, datosPrecioActCrypto])
+    }, [password, redSeleccionada, datosPrecioActCrypto]); // Cuando cambie el valor de datosPrecio, se actualiza todo de nuevo también
 
     const renderChangeIndicator = (value: number, timeframe: string) => {
         const isPositive = value >= 0;
@@ -367,99 +376,122 @@ function InicioDashboard() {
                     </div>
                 </div>
 
-                {/* Caja grande de valor total */}
-                <div className="bg-gradient-to-br from-purple-900/30 to-neutral-900/30 rounded-2xl w-full p-6 mb-5 shadow-lg border border-purple-500/40 transition-all duration-300 hover:shadow-xl">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between">
-                        <div>
-                            <h3 className="text-xl text-gray-300 mb-1">Valor total del portfolio</h3>
-                            <div className="text-4xl font-bold text-white font-mono flex items-center gap-2 flex-row">
+                {wallets.length === 0 ? (
+                    <div className="mb-5 bg-gradient-to-br from-purple-900/20 to-neutral-900/30 rounded-2xl p-8 text-center border border-dashed border-purple-500/40 transition-all duration-300 hover:shadow-lg">
+                        <div className="max-w-md mx-auto">
+                            <div className="flex justify-center mb-4">
+                                <Landmark className="w-16 h-16 text-purple-400" strokeWidth={1.5} />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-2">Portfolio vacío</h3>
+                            <p className="text-gray-300 mb-6">Aún no has creado ninguna cuenta. Comienza tu viaje cripto ahora mismo.</p>
+                            <button 
+                                className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-medium py-2 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg cursor-pointer"
+                                onClick={() => navigate("/inicio/cuentas/agregar")}
+                            >
+                                Crear mi primera wallet
+                            </button>
+                            <p className="text-xs text-gray-400 mt-4">Gestiona todas tus criptomonedas en un solo lugar</p>
+                        </div>
+                    </div>
+                ) : (      
+                    <>             
+                        {/* Caja grande de valor total */}
+                        <div className="bg-gradient-to-br from-purple-900/30 to-neutral-900/30 rounded-2xl w-full p-6 mb-5 shadow-lg border border-purple-500/40 transition-all duration-300 hover:shadow-xl">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between">
+                                <div>
+                                    <h3 className="text-xl text-gray-300 mb-1">Valor total del portfolio</h3>
+                                    <div className="text-4xl font-bold text-white font-mono flex items-center gap-2 flex-row">
+                                        {isRefreshing && (
+                                            <Spinner small size={25}/>
+                                        )}
+                                        {portfolio?.valorTotal.toLocaleString('es-ES', {
+                                            style: 'currency',
+                                            currency: 'EUR',
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}
+                                    </div>
+                                </div>
+                                
+                                <div className="mt-4 md:mt-0">
+                                    <h4 className="text-sm text-gray-400 mb-2">Distribución de activos</h4>
+                                    <div className="flex items-center space-x-12.5">
+                                        <div className="text-center">
+                                            <div className="text-lg font-bold text-orange-400">{btcPercentage}%</div>
+                                            <div className="text-xs text-gray-400">BTC</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-lg font-bold text-blue-400">{ethPercentage}%</div>
+                                            <div className="text-xs text-gray-400">ETH</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                            {/* Caja BTC */}
+                            <div className="relative bg-gradient-to-br from-orange-900/20 to-neutral-900/30 rounded-2xl p-5 shadow-lg border border-orange-500/40 transition-all duration-300 hover:shadow-xl">
                                 {isRefreshing && (
-                                    <Spinner small size={25}/>
+                                <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center rounded-2xl">
+                                    <Spinner small size={50} />
+                                </div>
                                 )}
-                                {portfolio?.valorTotal.toLocaleString('es-ES', {
-                                    style: 'currency',
-                                    currency: 'EUR',
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                })}
-                            </div>
-                        </div>
-                        
-                        <div className="mt-4 md:mt-0">
-                            <h4 className="text-sm text-gray-400 mb-2">Distribución de activos</h4>
-                            <div className="flex items-center space-x-12.5">
-                                <div className="text-center">
-                                    <div className="text-lg font-bold text-orange-400">{btcPercentage}%</div>
-                                    <div className="text-xs text-gray-400">BTC</div>
+                                <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <img src={btcIcon} alt="Bitcoin" draggable="false" className="w-10 h-10 mr-3 select-none" />
+                                    <div>
+                                    <h3 className="text-lg font-bold text-white">Bitcoin</h3>
+                                    <span className="text-gray-400 text-sm">BTC</span>
+                                    </div>
                                 </div>
-                                <div className="text-center">
-                                    <div className="text-lg font-bold text-blue-400">{ethPercentage}%</div>
-                                    <div className="text-xs text-gray-400">ETH</div>
+                                <div className="text-right">
+                                    <div className="text-xl font-bold text-white font-mono">
+                                    {portfolio?.btc.cantidad.toFixed(8)} BTC
+                                    </div>
+                                    <div className="text-sm text-gray-300">
+                                    {portfolio?.btc.valor.toLocaleString('es-ES', {
+                                        style: 'currency',
+                                        currency: 'EUR',
+                                    })}
+                                    </div>
+                                </div>
+                                </div>
+                            </div>
+
+                            {/* Caja ETH */}
+                            <div className="relative bg-gradient-to-br from-blue-900/20 to-neutral-900/30 rounded-2xl p-5 shadow-lg border border-blue-500/40 transition-all duration-300 hover:shadow-xl">
+                                {isRefreshing && (
+                                <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center rounded-2xl">
+                                    <Spinner small size={50} />
+                                </div>
+                                )}
+                                <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <img src={ethIcon} alt="Ethereum" draggable="false" className="w-10 h-10 mr-3 select-none" />
+                                    <div>
+                                    <h3 className="text-lg font-bold text-white">Ethereum</h3>
+                                    <span className="text-gray-400 text-sm">ETH</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-xl font-bold text-white font-mono">
+                                    {portfolio?.eth.cantidad.toFixed(6)} ETH
+                                    </div>
+                                    <div className="text-sm text-gray-300">
+                                    {portfolio?.eth.valor.toLocaleString('es-ES', {
+                                        style: 'currency',
+                                        currency: 'EUR',
+                                    })}
+                                    </div>
+                                </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                        </> 
+                    )
+                }
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    {/* Caja BTC */}
-                    <div className="relative bg-gradient-to-br from-orange-900/20 to-neutral-900/30 rounded-2xl p-5 shadow-lg border border-orange-500/40 transition-all duration-300 hover:shadow-xl">
-                        {isRefreshing && (
-                        <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center rounded-2xl">
-                            <Spinner small size={50} />
-                        </div>
-                        )}
-                        <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <img src={btcIcon} alt="Bitcoin" draggable="false" className="w-10 h-10 mr-3 select-none" />
-                            <div>
-                            <h3 className="text-lg font-bold text-white">Bitcoin</h3>
-                            <span className="text-gray-400 text-sm">BTC</span>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-xl font-bold text-white font-mono">
-                            {portfolio?.btc.cantidad.toFixed(8)} BTC
-                            </div>
-                            <div className="text-sm text-gray-300">
-                            {portfolio?.btc.valor.toLocaleString('es-ES', {
-                                style: 'currency',
-                                currency: 'EUR',
-                            })}
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-
-                    {/* Caja ETH */}
-                    <div className="relative bg-gradient-to-br from-blue-900/20 to-neutral-900/30 rounded-2xl p-5 shadow-lg border border-blue-500/40 transition-all duration-300 hover:shadow-xl">
-                        {isRefreshing && (
-                        <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center rounded-2xl">
-                            <Spinner small size={50} />
-                        </div>
-                        )}
-                        <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <img src={ethIcon} alt="Ethereum" draggable="false" className="w-10 h-10 mr-3 select-none" />
-                            <div>
-                            <h3 className="text-lg font-bold text-white">Ethereum</h3>
-                            <span className="text-gray-400 text-sm">ETH</span>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-xl font-bold text-white font-mono">
-                            {portfolio?.eth.cantidad.toFixed(6)} ETH
-                            </div>
-                            <div className="text-sm text-gray-300">
-                            {portfolio?.eth.valor.toLocaleString('es-ES', {
-                                style: 'currency',
-                                currency: 'EUR',
-                            })}
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-                </div>
 
 
                 {/* Precios Cripto en tiempo real */}

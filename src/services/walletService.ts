@@ -396,12 +396,16 @@ export async function obtenerTxsBtc(
     await escanear(0); // Direcciones externas
 
     resultados.sort((a, b) => {
-        if (!a.status.confirmed && b.status.confirmed) return 1;
-        if (a.status.confirmed && !b.status.confirmed) return -1;
+        // Si a no está confirmada pero b sí, entonces a va antes
+        if (!a.status.confirmed && b.status.confirmed) return -1;
+        // Sino, a va después
+        if (a.status.confirmed && !b.status.confirmed) return 1;
 
+        // Si ambos están igual (confirmados o no confirmados ambos)
         const alturaA = a.status.block_height ?? 0;
         const alturaB = b.status.block_height ?? 0;
 
+        // Orden descendente por la altura del bloque
         return alturaB - alturaA;
     });
 

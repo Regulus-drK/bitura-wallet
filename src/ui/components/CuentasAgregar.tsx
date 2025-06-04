@@ -338,7 +338,11 @@ function CuentasAgregar() {
                 <button
                     onClick={((pasoActual === 3 && selectedCoin === 'BTC') || 
                         (pasoActual === 2 && selectedCoin === 'ETH')) ? salirAgregar : siguientePaso}
-                    className="ml-auto flex items-center gap-2 bg-neutral-800 hover:bg-neutral-900 text-white font-semibold py-2 px-4 rounded-xl shadow-md border border-gray-500 transition duration-300 cursor-pointer"
+                    disabled={selectedCoin === null}
+                    className="ml-auto flex items-center gap-2 bg-neutral-800 hover:bg-neutral-900 
+                    text-white font-semibold py-2 px-4 rounded-xl shadow-md border border-gray-500 
+                    transition duration-300 cursor-pointer disabled:cursor-not-allowed 
+                    disabled:bg-neutral-600 disabled:hover:bg-neutral-600 disabled:text-gray-300"
                 >
                     {((pasoActual === 3 && selectedCoin === 'BTC') || 
                         (pasoActual === 2 && selectedCoin === 'ETH')) ? 'Continuar' : 'Siguiente'}

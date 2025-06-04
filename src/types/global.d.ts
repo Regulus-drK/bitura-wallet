@@ -29,7 +29,7 @@ declare global {
       generateMnemonic: (numWords: '12' | '24') => Promise<string[]>;
       listarPrecios: () => Promise<CryptoAPIResponse>;
       consultarDireccion: (direccion: string, pagina: string, testnet?: boolean) => Promise<BtcResponse | EthResponse>;
-      savePassword: (password: string) => Promise<void>;
+      savePassword: (password: string) => Promise<boolean>;
       getPassword: () => Promise<string>;
       saveMnemonic: (mnemonic: string) => Promise<void>;
       getMnemonic: (inputPassword: string) => Promise<string>;

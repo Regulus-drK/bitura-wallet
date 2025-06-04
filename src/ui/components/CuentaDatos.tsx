@@ -540,7 +540,7 @@ function CuentaDatos() {
                               <span className="font-semibold text-white">{tipo}</span>
                             </div>
                             <span className="text-xs text-gray-400">
-                              {Number(tx.confirmations) > 0 && tx.txreceipt_status === "1"
+                              {Number(tx.confirmations) > 5 && tx.txreceipt_status === "1"
                                 ? tx.fecha
                                 : "No confirmado"}
                             </span>

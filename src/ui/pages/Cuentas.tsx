@@ -61,7 +61,6 @@ function Cuentas() {
                 }
             }
         }
-
         
         const obtenerSaldoEth = async () => {
             for (const wallet of wallets.filter(w => w.tipoMoneda === "ETH")) {

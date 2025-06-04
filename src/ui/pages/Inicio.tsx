@@ -32,7 +32,8 @@ function Inicio() {
       <SidebarMenu />
       {/* Aviso de conexión */}
       {!isOnline && (
-        <div className="ml-30 select-none fixed p-6 text-center top-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-xl bg-red-500 shadow-lg flex items-center gap-3 z-50">
+        <div className="ml-30 select-none fixed p-6 text-center top-6 left-1/2 -translate-x-1/2 
+        px-5 py-3 rounded-xl bg-red-500 shadow-lg flex items-center gap-3 z-50">
           <WifiOff className="w-5 h-5 text-white" />
           <span className="font-semibold">
             Sin conexión. Funcionalidades limitadas

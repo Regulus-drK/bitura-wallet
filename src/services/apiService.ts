@@ -68,7 +68,7 @@ export async function setRedSeleccionada(isTestnet: boolean): Promise<boolean> {
   return window.api.setRedSeleccionada(isTestnet);
 }
 
-export async function savePassword(password: string): Promise<void> {
+export async function savePassword(password: string): Promise<boolean> {
   return window.api.savePassword(password);
 }
 
