@@ -35,14 +35,19 @@ function CuentaDatos() {
 
   if (!wallet || !saldos) return <Spinner/>;
 
+  // Función para navegar a otra página pasando como valor a la página la wallet
   const handleNavigate = async (path: string) => {
     navigate(path, { state: { wallet } });
   }
 
+  // Función para saber si se accede a uno de los dos botones desde Cuenta Datos
+  // y si es así, hacer que la flecha de Volver devuelva a Cuenta Datos y no
+  // a la raíz de Enviar o Recibir
   const handleNavigateEnviarRecibir = async (path: string) => {
     navigate(path, { state: { wallet, backCuentaDatos: true } });
   }
 
+  // Función para cargar los precios y los balances de la cuenta
   const loadPricesYBalances = async () => {
     try {
       // Reset de variables para hacer aparecer de nuevo los spinner e indicar que está cargando de nuevo
@@ -52,12 +57,12 @@ function CuentaDatos() {
       setDatosPrecioActCrypto(null);
       setIsTxsLoaded(false);
 
-      const datos = await listarPrecios();
+      const datos = await listarPrecios(); // Llamada a API Java
       if (isCancelled.current || !datos) return;
 
       const criptoFiltrada = Object.values(datos.data).find(
         (crypto) => crypto.symbol === wallet?.tipoMoneda
-      );
+      ); // Elegimos solo la cripto de la cuenta asociada
 
       if (!criptoFiltrada || isCancelled.current) return;
 
@@ -68,10 +73,10 @@ function CuentaDatos() {
         },
       };
       setDatosPrecioActCrypto(nuevaRespuesta);
-      const precioMoneda = criptoFiltrada.quote.EUR.price;
+      const precioMoneda = criptoFiltrada.quote.EUR.price; // Precio actual cripto
       setPrecioActCrypto(precioMoneda);
 
-      if (wallet?.tipoMoneda === 'BTC') {
+      if (wallet?.tipoMoneda === 'BTC') { // Caso BTC para cargar fondos
         const mnemonic = await getMnemonic(password!);
         if (isCancelled.current) return;
 
@@ -86,7 +91,7 @@ function CuentaDatos() {
         wallet.ultSaldoGuardadoEur = totalEur;
 
         loadTransaccionesBtc();
-      } else {
+      } else { // Caso ETH para cargar fondos
         let testnet = redSeleccionada === 'testnet' ? true : false;
         const result = await consultarDireccion(wallet.direccionPublica, paginaTxEth.toString(), testnet);
 
@@ -110,8 +115,8 @@ function CuentaDatos() {
       const walletActualizada = await updateWallet(wallet.nombre, wallet, wallet.red);
       if (isCancelled.current) return;
 
-      if (walletActualizada) {
-        const allWallets = await getAllWallets();
+      if (walletActualizada) { // Se actualiza en memoria
+        const allWallets = await getAllWallets(); 
         setWallets(allWallets);
       } else {
         console.error('Error al actualizar la wallet en localStorage.');
@@ -121,6 +126,7 @@ function CuentaDatos() {
     }
   };
 
+  // Función para cargar las transacciones de BTC de la cuenta
   const loadTransaccionesBtc = async () => {
     try {
       const mnemonic = await getMnemonic(password!);
@@ -138,6 +144,8 @@ function CuentaDatos() {
     }
   }
 
+  // De momento solo para Ethereum
+  // Handles para ir a la página anterior o siguiente
   const handlePaginaAnterior = () => {
     if (fondosEth && fondosEth.page > 1) {
       setPaginaTxEth(prev => prev - 1);
@@ -148,6 +156,7 @@ function CuentaDatos() {
     setPaginaTxEth(prev => prev + 1);
   }
 
+  // Efectos React
   useEffect(() => {
       const cargarRed = async () => setRedSeleccionada(await getRedSeleccionada());
       cargarRed();
@@ -172,7 +181,7 @@ function CuentaDatos() {
     if (isTxsLoaded) { // Evitar carga inicial duplicada
       loadPricesYBalances();
     }
-  }, [paginaTxEth]); 
+  }, [paginaTxEth]);  // Cuando cambia la página de las Tx de ETH, se ejecuta el effect
 
   const iconoCrypto = wallet.tipoMoneda === 'BTC' ? btcIcon : ethIcon;
   const fecha = new Date();
@@ -365,13 +374,14 @@ function CuentaDatos() {
             <>
             {wallet.tipoMoneda === 'BTC' ? (
               <>
+                {/* Transacciones de Bitcoin */}
                 {txsBtc.length === 0 ? (
                   <p className="text-gray-400">No se encontraron transacciones en esta cuenta.</p>
                 ) : (
                   txsBtc.map((tx, idx) => {
                     const direccion = tx.address;
                     
-                    // Determinar tipo de transacción
+                    // Determinar el tipo de transacción
                     const esRecibido = tx.vout.some(vout => vout.scriptpubkey_address === direccion);
                     const esEnviado = tx.vin.some(vin => vin.prevout.scriptpubkey_address === direccion);
                     const esCambio = tx.vout.some(vout => vout.scriptpubkey_address === direccion && vout.esCambio && 
@@ -511,6 +521,7 @@ function CuentaDatos() {
               </>
               ) : (
                 <>
+                  {/* Transacciones de Ethereum */}
                   {fondosEth?.page === 1 && fondosEth.transactions.length === 0 ? (
                     <p className="text-gray-400">No se encontraron transacciones en esta cuenta.</p>
                   ) : (
@@ -583,6 +594,7 @@ function CuentaDatos() {
                       );
                     }) 
                   )}
+                  {/* Botones para elegir página de Txs de Ethereum */}
                   {!fondosEth || !(fondosEth.transactions.length === 0 && fondosEth.page === 1) && (
                     <div className="flex justify-between items-center mt-6">
                       <button

@@ -40,6 +40,7 @@ function CuentaAjustes() {
         detectarRedBtcSeleccionada();
     }, []);
 
+    // Función para volver a los datos de la cuenta de la wallet en concreto
     const handleNavigate = async (path: string) => {
         navigate(path, { state: { wallet } });
     }
@@ -78,6 +79,7 @@ function CuentaAjustes() {
         return valid;
     };
 
+    // Función para cambiar el nombre a la wallet
     const handleNombreChange = async () => {
         if (!redBtcSeleccionada) return;
 
@@ -117,13 +119,14 @@ function CuentaAjustes() {
         }, 3000);
     };
 
+    // Función para borrar la cuenta seleccionada
     const handleBorrarCuenta = async () => {
         setIsDeleting(true);
         try {
             let borrado;
             if (wallet.red !== undefined) {
                 borrado = await deleteWallet(wallet.nombre, wallet.red);
-            } else {
+            } else { // Caso ETH
                 borrado = await deleteWallet(wallet.nombre);
             }
             
@@ -148,6 +151,7 @@ function CuentaAjustes() {
         }
     };
 
+    // Función para reiniciar los timers del toast
     const resetearToasts = () => {
         if (entradaTimeoutRef.current) clearTimeout(entradaTimeoutRef.current);
         if (salidaTimeoutRef.current) clearTimeout(salidaTimeoutRef.current);

@@ -30,22 +30,26 @@ function CuentasAgregar() {
 
     const navigate = useNavigate();
 
+    // Función para volver a Cuentas
     const salirAgregar = () => {
         navigate("/inicio/cuentas");
     }
 
+    // Avanzar un paso
     const siguientePaso = async () => {
         if (await validarPaso()) {
             setPasoActual((prev) => prev + 1);
         }
     };
 
+    // Disminuir un paso
     const anteriorPaso = () => {
         if (pasoActual > 1) {
             setPasoActual(pasoActual - 1);
         }
     }
 
+    // Validar que se puede pasar al siguiente paso
     const validarPaso = async (): Promise<boolean> => {
         switch (pasoActual) {
             case 1:
@@ -54,7 +58,7 @@ function CuentasAgregar() {
                     return controlNombre;
                 }
 
-                if (controlNombre) {
+                if (controlNombre) { // Caso de ETH, puesto que su inicialización es distinta
                     return await handleCreateEthWallet();
                 }
                 return false; // Si ninguna condición ocurre, devolvemos false
@@ -65,6 +69,8 @@ function CuentasAgregar() {
         }
     };
 
+    // Función para comprobar el nombre de la wallet asignada y verificar
+    // que cumple los estándares pedidos
     const handleWalletsName = (): boolean => {
         let valid = true;
         if (nombreWallet.length === 0) {
@@ -80,6 +86,7 @@ function CuentasAgregar() {
         const nombreDuplicado = wallets.some(w => {
             const nombreW = w.nombre.trim().toLowerCase();
 
+            // Control para verificar si existe en la misma red e ignorar si están en redes distintas
             if (w.tipoMoneda === 'BTC') {
                 // Si la wallet es BTC, comparamos solo si están en la misma red
                 return nombreW === nombreMinusculas && w.red === redBtcSeleccionada;
@@ -97,6 +104,7 @@ function CuentasAgregar() {
         return valid;
     };
 
+    // Función para crear la wallet de BTC
     const handleCreateBtcWallet = async (): Promise<boolean> => {
         if (!password) { 
             console.error('No se pudo obtener la contraseña del usuario.')
@@ -119,7 +127,7 @@ function CuentasAgregar() {
                 let walletIndiceMasAlto = walletsFiltradas.reduce((max, actual) => {
                     return actual.indicePrivada > max.indicePrivada ? actual : max;
                 });
-
+                // Sacamos el último indice de privada
                 ultimoIndex = walletIndiceMasAlto.indicePrivada + 1;
             }
         }
@@ -127,7 +135,7 @@ function CuentasAgregar() {
         try {
             let resultado = await crearYGuardarWalletBtc(nombreWallet, mnemonic, 
                 ultimoIndex, selectedTipo, redBtcSeleccionada);
-            if (resultado) {
+            if (resultado) { // Actualizamos las wallets en memoria si es correcto
                 const allWallets = await getAllWallets();
                 setWallets(allWallets);
             }
@@ -138,6 +146,7 @@ function CuentasAgregar() {
         }
     }
 
+    // Función para crear una wallet de Ethereum
     const handleCreateEthWallet = async(): Promise<boolean> => {
         if (!password) { 
             console.error('No se pudo obtener la contraseña del usuario.')
@@ -159,7 +168,7 @@ function CuentasAgregar() {
                 let walletIndiceMasAlto = walletsFiltradas.reduce((max, actual) => {
                     return actual.indicePrivada > max.indicePrivada ? actual : max;
                 });
-
+                // Sacamos el último indice de privada
                 ultimoIndex = walletIndiceMasAlto.indicePrivada + 1;
             }
         }

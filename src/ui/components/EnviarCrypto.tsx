@@ -57,7 +57,10 @@ function EnviarCrypto() {
     const walletsBTC = wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redSeleccionada);
     const walletsETH = wallets.filter(w => w.tipoMoneda === "ETH");
 
+    // Efectos React
     useEffect(() => {
+        // En el caso de que no haya wallet (que se entre a la ventana desde Enviar
+        // en lugar de desde los datos de una cuenta en concreto)
         if (!wallet) {
             setWalletReceived(false);
         } else {
@@ -133,6 +136,7 @@ function EnviarCrypto() {
             }
         };
 
+        // Solo obtenemos los saldos si no venimos de una wallet concreta
         if (!wallet) {
             obtenerSaldosBtc();
             obtenerSaldosEth();
@@ -150,17 +154,20 @@ function EnviarCrypto() {
         calcularConversionEur();
     }, [cantidadAenviar, comision]);
 
+    // Función handler para elegir la wallet con la que enviar fondos
     const handleChooseWallet = (chosenWallet: WalletInfo) => {
         const saldo = saldos[chosenWallet.nombre];
-        if (saldo && saldo.isGreaterThan(0)) {
+        if (saldo && saldo.isGreaterThan(0)) { // Solo si tiene saldo
             setWallet(chosenWallet);
         }
     };
 
+    // Función handler para volver a los datos de la cuenta si se procedía de ahí
     const handleVolverDatosCuenta = async () => {
         navigate('/inicio/cuentas/datos-cuenta', { state: { wallet } });
     }
 
+    // Función handler encargada de comprobar si la dirección introducida es válida
     const handleCheckAddress = async () => {
         if (wallet?.direccionPublica === receiptAddress) {
             setIsSameAddress(true);
@@ -189,6 +196,8 @@ function EnviarCrypto() {
         }
     };
 
+    // Función para reconsultar el saldo de la cuenta para intentar tener los datos más recientes
+    // a la hora de enviar fondos, evitando errores de cantidades actuales
     const reconsultarSaldoCuentaSelec = async (wallet: WalletInfo) => {
         if (!password) return;
         const mnemonic = await getMnemonic(password);
@@ -227,6 +236,7 @@ function EnviarCrypto() {
         } 
     }
 
+    // Función para cargar los precios de las criptomonedas (en función de la elegida)
     const cargarPreciosCrypto = async () => {
         const datos = await listarPrecios();
         if (!datos) return;
@@ -240,6 +250,7 @@ function EnviarCrypto() {
         setPrecioActCrypto(criptoFiltrada.quote.EUR.price);
     }
 
+    // Función para calcular la conversión de las cantidades a euros
     const calcularConversionEur = () => {
         if (cantidadAenviar === "" || isNaN(Number(cantidadAenviar))) {
             setCantidadAenviarEur(0);
@@ -280,6 +291,7 @@ function EnviarCrypto() {
         }
     }
 
+    // Función handler encargada de calcular lo necesario para enviar todo + comisión
     const handleEnviarTodo = async () => {
         if (wallet?.tipoMoneda === 'BTC') {
             try {
@@ -317,6 +329,7 @@ function EnviarCrypto() {
         }
     }
 
+    // Función handler para calcular la comisión automáticamente al escribir una cantidad
     const handleCalcularComisionAuto = async (cantidad: string) => {
         if (wallet?.tipoMoneda === 'BTC') {
             if (Number(cantidad) * 1 === 0 ||
@@ -356,6 +369,7 @@ function EnviarCrypto() {
         }
     }
 
+    // Función para comprobar el saldo a enviar
     const comprobarSaldoAEnviar = (): boolean => {
         if (comision === '' || comision === undefined) setComision('1');
         let valorConversionSats = 100_000_000;
@@ -388,6 +402,7 @@ function EnviarCrypto() {
         return true;
     }
 
+    // Función para botón Enviar
     const handleBotonEnviar = () => {
         if (comprobarSaldoAEnviar()) {
             setSaldoConFeeInsuficiente(false);
@@ -395,6 +410,7 @@ function EnviarCrypto() {
         }
     }
 
+    // Función para establecer valores de las variables para mostrar la ventana de cantidad a enviar
     const ventanaCantidadAEnviar = () => {
         setSaldoConFeeInsuficiente(null);
         setSaldoInsuficiente(null);
@@ -404,6 +420,7 @@ function EnviarCrypto() {
         setIsTransactionSuccessful(null);
     }
 
+    // Función para verificar si se debería ejecutar la transacción
     const verificarTransaccion = (valor: boolean) => {
         setShouldExecuteTransaction(valor);
         if (valor) {
@@ -414,6 +431,7 @@ function EnviarCrypto() {
         }
     }
 
+    // Función para realizar la transacción
     const realizarTransaccion = async () => {
         if (wallet?.tipoMoneda === 'BTC') {
             try {

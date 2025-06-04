@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { isWalletConfigured, onWalletConfigChange } from "../services/apiService";
 
+/**
+ * Hook para comprobar si la wallet está configurada
+ * @returns Booleano de si está configurada la aplicación o no
+ * @category Hooks
+ */
 export function useWalletConfig() {
     const [isConfigured, setIsConfigured] = useState<boolean | undefined>(undefined);;
 

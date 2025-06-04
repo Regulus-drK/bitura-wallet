@@ -63,7 +63,7 @@ export function getMnemonic(): string | null {
     return safeStorage.decryptString(encrypted);
 }
 
-export function createPasswordPromptWindow(): void {
+export function createAppConfigResetPromptWindow(): void {
     const promptWindow = new BrowserWindow({
         width: 400,
         height: 375,
@@ -82,10 +82,10 @@ export function createPasswordPromptWindow(): void {
     promptWindow.setMenu(null);
 
     if (isDev()) {
-        promptWindow.loadURL('http://localhost:5123/#/password-prompt'); // desarrollo
+        promptWindow.loadURL('http://localhost:5123/#/config-reset-prompt'); // desarrollo
     } else {
         // En producción, carga la URL de la aplicación React con hash
-        const url = `file://${path.join(app.getAppPath(), 'dist-react', 'index.html')}#/password-prompt`;
+        const url = `file://${path.join(app.getAppPath(), 'dist-react', 'index.html')}#/config-reset-prompt`;
         promptWindow.loadURL(url); // Producción con hash
     };
 }
@@ -100,7 +100,7 @@ export function ventanaConfirmarDeleteConfigFiles(): void {
     });
 
     if (response === 1) {
-        createPasswordPromptWindow();
+        createAppConfigResetPromptWindow();
     } else {
         return;
     }

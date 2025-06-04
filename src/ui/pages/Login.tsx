@@ -14,6 +14,7 @@ function Login() {
 
     const navigate = useNavigate();
 
+    // Hook comprobador para redirigir en el caso que el usuario no deba encontrarse en dicha ventana
     walletShouldBeConfigured(true);
 
     useEffect(() => {
@@ -36,6 +37,7 @@ function Login() {
         closeApp();
     }
 
+    // Función de la API Electron para establecer las propiedades de la ventana Login en este caso
     useWindowSize({
         width: 800,
         height: 650,

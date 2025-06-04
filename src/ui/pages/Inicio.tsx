@@ -9,6 +9,8 @@ import { AnimatePresence } from 'framer-motion';
 import useOnlineStatus from '../../hooks/useOnlineStatus';
 import { WifiOff } from 'lucide-react';
 
+// Componente principal de Inicio
+// Uso de Outlet para renderizar el componente hijo correspondiente
 function Inicio() {
   walletShouldBeConfigured(true);
 

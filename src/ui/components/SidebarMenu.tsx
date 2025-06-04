@@ -2,12 +2,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import logoBitura from '../../assets/LogotipoBituraPng.png'
 import { Home, Wallet, Settings, LogOut, ArrowUp, ArrowDown } from "lucide-react";
 
+// Barra lateral de la aplicación
 const SidebarMenu = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
     const handleLocation = (path: string) => {
-        navigate(path);             // Redirige al login
+        navigate(path); // Redirige a la ruta indicada
     };
 
     return (
@@ -75,6 +76,7 @@ const SidebarMenu = () => {
     );
 };
 
+// Botones de la barra lateral
 const SidebarButton = ({ icon, label, onClick, active }: 
     { icon: React.ReactNode; label: string, to: string, active: boolean, onClick: () => void }) => (
     <button 

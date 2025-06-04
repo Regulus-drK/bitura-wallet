@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { closeActualWindow, deleteConfigFiles, validatePassword } from '../../services/apiService';
 import { Eye, EyeOff, Trash } from 'lucide-react';
 
-export default function PasswordPrompt() {
+// Ventana emergente para reestablecer toda la configuración a por defecto (pide contraseña)
+// Antes llamado PasswordPrompt, cambiado nombre para más sentido
+export default function AppConfigResetPrompt() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isValidPassword, setIsValidPassword] = useState<boolean | undefined>(undefined);
 
     const handleConfirm = async () => {
+        // Comprobamos que la contraseña sea la correcta
         if (await validatePassword(password)) {
             setIsValidPassword(true);
 

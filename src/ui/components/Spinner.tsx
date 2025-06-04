@@ -1,4 +1,4 @@
-function Spinner({ small = false, size = 20 }) {
+function Spinner({ small = false, size = 20 }) { // Simple Spinner para la aplicación
   if (small) {
     return (
       <svg

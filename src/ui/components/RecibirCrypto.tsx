@@ -15,13 +15,15 @@ function RecibirCrypto() {
     const location = useLocation();
     const navigate = useNavigate();
     const { password } = useAuth();
+    // Valores recibidos de otras rutas
     const [wallet, setWallet] = useState<WalletInfo | undefined>(location.state?.wallet);
+    // Valor para saber si proviene de Cuenta Datos
     const [comesFromCuentaDatos] = useState<boolean | undefined>(location.state?.backCuentaDatos);
     const { wallets } = useWallets();
     const [walletReceived, setWalletReceived] = useState<boolean>(false);
     const [redSeleccionada, setRedSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
     const [direccionPublica, setDireccionPublica] = useState<string>("");
-    const [qrBase64, setQrBase64] = useState<string>('');
+    const [qrBase64, setQrBase64] = useState<string>(''); // Base64 en String del QR para pintarlo
     const [copiado, setCopiado] = useState(false);
 
     const walletsBTC = wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redSeleccionada);
@@ -51,10 +53,12 @@ function RecibirCrypto() {
         setWallet(chosenWallet);
     };
 
+    // Botón para volver a Datos Cuenta si se viene de ahí
     const handleVolverDatosCuenta = async () => {
         navigate('/inicio/cuentas/datos-cuenta', { state: { wallet } });
     }
 
+    // Función handler de la dirección pública
     const handlePublicAddress = async () => {
         setDireccionPublica(wallet!.direccionPublica);
         generarQR(wallet!.direccionPublica).then(setQrBase64);
@@ -87,6 +91,7 @@ function RecibirCrypto() {
         }
     }
 
+    // Función para copiar dirección pública al portapapeles del usuario
     const copiarDireccion = () => {
         navigator.clipboard.writeText(wallet?.direccionPublica!);
         setCopiado(true);

@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import { EmptyMenu, MenuBar } from './MenuBar.js';
 import { BituraStore, WalletInfo, PortfolioData } from './BituraStore.js';
 
+// Datos por defecto del portfolio en el JSON
 const defaultPortfolio: PortfolioData = {
   valorTotal: 0,
   btc: {
@@ -18,6 +19,7 @@ const defaultPortfolio: PortfolioData = {
   }
 };
 
+// Definición del "almacén" de la aplicación (config.json)
 const store = new Store<BituraStore>({
   defaults: {
     walletConfigured: false,
@@ -26,6 +28,8 @@ const store = new Store<BituraStore>({
   }
 });
 
+// Función para crear la ventana principal de la aplicación, además de
+// asignar varios procesos y funcionalidades específcias
 function createMainWindow(): BrowserWindow {
     const mainWindow = new BrowserWindow({
         width: 800,
@@ -82,10 +86,12 @@ app.on("ready", () => {
     // Creamos la ventana principal
     createMainWindow();
 
+    // Canal para cerrar la aplicación
     ipcMain.on('app/close', () => {
         app.quit();
     });
 
+    // Canal para cerrar la ventana actual
     ipcMain.on('app/closeActualWindow', () => {
         const win = BrowserWindow.getFocusedWindow();
         if (!win) return;
@@ -93,6 +99,7 @@ app.on("ready", () => {
         win.close();
     })
 
+    // Canal para establecer unas dimensiones específicas a la ventana de la aplicación
     ipcMain.handle('window:setSize', (_, options) => {
         const win = BrowserWindow.getFocusedWindow();
         if (!win) return;
@@ -103,6 +110,7 @@ app.on("ready", () => {
         win.setResizable(options.resizable ?? false);
     });
 
+    // Canal para reiniciar el tamaño de la ventana al por defecto establecido
     ipcMain.handle('window:resetSize', () => {
         const win = BrowserWindow.getFocusedWindow();
         if (!win) return;
@@ -112,6 +120,7 @@ app.on("ready", () => {
         win.setResizable(true);
     });
 
+    // Canal para habilitar la barra superior del menú (una vez iniciada la aplicación)
     ipcMain.on('window:enableMenu', () => {
         const win = BrowserWindow.getFocusedWindow();
         if (!win) return;
@@ -123,6 +132,7 @@ app.on("ready", () => {
         win.setMenuBarVisibility(true);
     })
 
+    // Canal para deshabilitar la barra superior del menú (usado en Login y Setup)
     ipcMain.on('window:disableMenu', () => {
         const win = BrowserWindow.getFocusedWindow();
         if (!win) return;
@@ -168,14 +178,15 @@ app.on("ready", () => {
      * React (renderer) ⇄ Electron (main) ⇄ Java (.jar embebido)
      */
 
-    // Aquí añadimos un canal para que React pueda pedir una acción al .jar directamente
+    // Aquí se añaden los canales para que React pueda pedir una acción al .jar directamente
 
+    // Llamada al JAR para generar el mnemonic o frase semilla
     ipcMain.handle('java:generateMnemonic', async (_event, args) => {
         return new Promise((resolve, reject) => {
             const javaPath = getJdkPath();
             const jarPath = getJarPath();
 
-            // Ejecuta el .jar temporalmente para una tarea concreta (por ejemplo: generar mnemonic)
+            // Ejecuta el .jar temporalmente para la tarea concreta
             const proc = spawn(javaPath, ['-jar', jarPath, 'generateMnemonic', args]);
             let output = '';
 
@@ -202,6 +213,7 @@ app.on("ready", () => {
         });
     });
 
+    // Llamada al JAR para listar los precios actuales de las criptomonedas
     ipcMain.handle('java:listarPrecios', async () => {
         return new Promise((resolve, reject) => {
             const javaPath = getJdkPath();
@@ -234,6 +246,7 @@ app.on("ready", () => {
         });
     });
 
+    // Llamada al JAR para consultar una dirección en especifico y ver su saldo
     ipcMain.handle('java:consultarDireccion', async (_event, direccion: string, pagina: string, testnet?: boolean) => {
         return new Promise((resolve, reject) => {
             const javaPath = getJdkPath();
@@ -299,6 +312,7 @@ app.on("ready", () => {
         return true;
     });
 
+    // Canal para sacar el valor de la red actual (mainnet o testnet)
     ipcMain.handle('wallet:getRedSeleccionada', () => {
         let redSeleccionada = store.get('redSeleccionada');
         if (redSeleccionada !== 'mainnet' && redSeleccionada !== 'testnet') {
@@ -307,6 +321,7 @@ app.on("ready", () => {
         return redSeleccionada;
     });
 
+    // Canal para fijar la red actual seleccionada por el usuario
     ipcMain.handle('wallet:setRedSeleccionada', (_event, isTestnet: boolean) => {
         if (isTestnet) {
             store.set('redSeleccionada', 'testnet');
@@ -316,24 +331,30 @@ app.on("ready", () => {
         return true;
     })
 
+    // Canal para guardar la contraseña en un binario encriptado
     ipcMain.handle('wallet:savePassword', (_event, password: string) => {
+        // Llamamos al método de util.ts
         savePassword(password);
         return true;
     });
 
+    // Canal para sacar la contraseña actual del usuario (solo para procesos internos)
     ipcMain.handle('wallet:getPassword', () => {
         return getPassword();
     });
 
+    // Canal para guardar el mnemonic en un binario encriptado
     ipcMain.handle('wallet:saveMnemonic', (_event, mnemonic: string) => {
         saveMnemonic(mnemonic);
         return true;
     });
 
+    // Canal para devolver el mnemonic almacenado
     ipcMain.handle('wallet:getMnemonic', async () => {
         return getMnemonic();
     });
 
+    // Canal para validar si la contraseña recibida coincide con la guardada 
     ipcMain.handle('wallet:validatePassword', async (_event, inputPassword: string) => {
         const savedPassword = getPassword();
         return savedPassword === inputPassword;
@@ -386,15 +407,18 @@ app.on("ready", () => {
         return true;
     });
 
+    // Borrar todos los archivos de configuración, tanto config.json como binarios
     ipcMain.handle('wallet:deleteConfigFiles', async () => {
         deleteConfigFiles();
         return true;
     });
 
+    // Devuelve el portfolio guardado en el JSON
     ipcMain.handle('store:getPortfolio', () => {
         return store.get('portfolio');
     })
 
+    // Actualiza el portfolio con los datos nuevos recibidos
     ipcMain.handle('store:updatePortfolio', (_event, datosActualizados: PortfolioData) => {
         store.set('portfolio', datosActualizados);
         return true;

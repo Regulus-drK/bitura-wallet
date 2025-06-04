@@ -20,6 +20,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
+/**
+ * Función para acceder a los tipos del contexto de autenticación
+ * Permite acceder a la contraseña y setter de la contraseña (en memoria) desde otros componentes
+ * @returns Devuelve el contexto de Auth (password, setPassword...)
+ */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth debe usarse dentro de <AuthProvider>');

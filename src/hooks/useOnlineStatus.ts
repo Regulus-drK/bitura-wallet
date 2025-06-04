@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
 
+/**
+ * Hook para verificar si el usuario tiene conexión a internet
+ * @returns Devuelve un booleano para decir si está o no conectado a internet
+ * @category Hooks
+ */
 const useOnlineStatus = () => {
   const [isOnline, setIsOnline] = useState<boolean>(true);
 

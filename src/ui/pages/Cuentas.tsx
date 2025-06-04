@@ -19,6 +19,7 @@ function Cuentas() {
     const navigate = useNavigate();
     const [redSeleccionada, setRedSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
 
+    // Efectos React
     useEffect(() => {
         const detectarRedSeleccionada = async () => {
             setRedSeleccionada(await getRedSeleccionada());
@@ -88,6 +89,7 @@ function Cuentas() {
                 }
             }
         }
+        // Llamada a las funciones para obtener los saldos
         obtenerSaldoBtc();
         obtenerSaldoEth();
 
@@ -96,11 +98,12 @@ function Cuentas() {
         };
     }, [password, redSeleccionada]);
 
-
+    // Función handler para dirigirnos a los datos de una cuenta de la wallet clickada
     const handleClickWallet = (wallet: WalletInfo) => {
         navigate('/inicio/cuentas/datos-cuenta', { state: { wallet } });
     };
 
+    // Wallets filtradas para mejor uso
     const walletsBTC = wallets.filter(wallet => wallet.tipoMoneda === 'BTC' && wallet.red === redSeleccionada);
     const walletsETH = wallets.filter(wallet => wallet.tipoMoneda === 'ETH');
 

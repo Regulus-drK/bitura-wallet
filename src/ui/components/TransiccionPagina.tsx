@@ -6,6 +6,7 @@ const variants = {
   exit: { opacity: 0, x: -100 },
 };
 
+// Componente para asignar animaciones de entrada y salida a otros componentes
 export default function TransiccionPagina({ children }: { children: React.ReactNode }) {
   return (
     <motion.div

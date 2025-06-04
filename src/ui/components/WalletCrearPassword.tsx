@@ -26,17 +26,18 @@ function WalletCrearPassword({ onBack, mnemonic }: WalletCrearPasswordProps) {
         const mnemonicString = mnemonic?.join(' ');
         // Para reconvertirlo, es con .split
 
+        // Guardamos valores y creamos binarios encriptados
         savePassword(password!);
         saveMnemonic(mnemonicString!);
 
-        setTimeout(() => setShowSuccess(false), 3000);
+        setTimeout(() => setShowSuccess(false), 3000); // Timeout para UX, visual
 
         setTimeout(async () => {
-            await setWalletConfigured(true);
-            // console.log('Ahora se pondría a true la config')
+            await setWalletConfigured(true); // Cambiamos el config y cambia la ventana al Login
         }, 4000);
     };
 
+    // Función para comprobar contnraseñas
     const handleCheckPasswords = () => {
         if (!password || !confirmPassword) return;
 
@@ -47,6 +48,7 @@ function WalletCrearPassword({ onBack, mnemonic }: WalletCrearPasswordProps) {
                 setIsPassSecure(false);
                 return;
             }
+            // Si todo es correcto, se configura la wallet (mnemonic)
             setCheckPasswords(true);
             setButtonsDisabled(true);
             handleConfigureWallet();

@@ -11,10 +11,14 @@ import { addWallet, updateWallet } from './apiService';
 import { formatTxsBtc, type BtcAddressUtxo, type BtcTransactionFormatted, type BtcTransactionRaw} from '../types/BtcBalance';
 
 // Crear instancia de bip32 con tiny-secp256k1
+// Permite derivar claves jerárquicas deterministas (HD wallets) según BIP32
 const bip32 = BIP32Factory(ecc);
 
+// Crear una fábrica para generar y manejar pares de claves EC (clave privada + pública)
+// ECPair se usa para firmar transacciones, generar direcciones, importar claves, etc.
 const ECPair = ECPairFactory(ecc);
 
+// Función para validar si un mnemonic es correcto
 export function validarMnemonic(mnemonic: string): boolean {
     return bip39.validateMnemonic(mnemonic);
 }
@@ -33,6 +37,8 @@ function crearWalletBtc(mnemonic: string | null, indexPrivada: number, tipoDirec
         network = bitcoin.networks.testnet;
     }
 
+    // Asignamos el tipo de derivación en función del del tipoDireccion recibido
+    // Cada uno usa un método de payment o pago
     let derivacion: string;
     let metodoBtc: (args: bitcoin.payments.Payment) => bitcoin.payments.Payment;
     switch (tipoDireccion) {
@@ -52,7 +58,7 @@ function crearWalletBtc(mnemonic: string | null, indexPrivada: number, tipoDirec
             derivacion = "84'";
             metodoBtc = bitcoin.payments.p2wpkh;
             break;
-        default:
+        default: // En caso de error o algo inesperado
             derivacion = "84'";
             metodoBtc = bitcoin.payments.p2wpkh;
             break;
@@ -66,9 +72,11 @@ function crearWalletBtc(mnemonic: string | null, indexPrivada: number, tipoDirec
     // Derivar raíz BIP32
     const root = bip32.fromSeed(binSeed);
 
+    // Definición del path en función de los datos recogidos
     const path = `m/${derivacion}/0'/${indexPrivada}'`;
 
-    const childBitcoin = root.derivePath(path + '/0/0');
+    // Creación del objeto de la wallet BTC derivando del path asignado
+    const childBitcoin = root.derivePath(path + '/0/0'); // Le añadimos las rutas faltantes (change y address)
     const { address: addressBitcoin } = metodoBtc({ 
         pubkey: Buffer.from(childBitcoin.publicKey),
         network: network
@@ -108,6 +116,7 @@ export async function crearYGuardarWalletBtc(
         ultSaldoGuardadoEur: 0
     };
 
+    // Guardamos la wallet en el JSON
     const resultado = await addWallet(walletInfo);
 
     if (resultado) {
@@ -132,8 +141,10 @@ export async function crearDireccionPublicaBtc(mnemonic: string | null, cuenta: 
     // Derivar raíz BIP32
     const root = bip32.fromSeed(binSeed);
 
+    // Aumentamos el índice de la dirección pública actual que toca
     let indiceSiguiente = cuenta.indicePublicaActual! + 1;
 
+    // Definimos el nuevo path para sacar la dirección pública de el
     const path = cuenta.pathBase + `/0/${indiceSiguiente}`;
 
     let metodoBtc: (args: bitcoin.payments.Payment) => bitcoin.payments.Payment;
@@ -157,140 +168,165 @@ export async function crearDireccionPublicaBtc(mnemonic: string | null, cuenta: 
     }
 
     const childBitcoin = root.derivePath(path);
+    // Generamos la dirección pública a través de la clave pública
     const { address: addressBitcoin } = metodoBtc({ 
         pubkey: Buffer.from(childBitcoin.publicKey),
         network: network
     });
 
+    // Ajustamos valores a los nuevos actualizados
     cuenta.indicePublicaActual = indiceSiguiente;
     cuenta.direccionPublica = addressBitcoin!;
 
+    // Actualizamos datos de la cuenta
     const actualizado = await updateWallet(cuenta.nombre, cuenta, cuenta.red);
 
     return actualizado;
 }
 
+// Función encargada de verificar los fondos consultando en las direcciones
+// públicas de la cuenta en cuestión
 export async function verificarFondosDireccionesBtc(
   mnemonic: string | null,
   wallet: WalletInfo,
   redSeleccionada: 'mainnet' | 'testnet'
 ) {
-  if (!mnemonic || !validarMnemonic(mnemonic)) {
-    console.error("Mnemonic inválido.");
-    return;
-  }
-
-  const testnet = redSeleccionada === 'testnet';
-  const SATOSHIS_IN_BTC = new BigNumber(1e8);
-  const binSeed = bip39.mnemonicToSeedSync(mnemonic);
-  const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
-  const apiBase = testnet ? "https://mempool.space/testnet/api" : "https://mempool.space/api";
-  const root = bip32.fromSeed(binSeed, network);
-  const pathBase = wallet.pathBase.replace(/\/[0-1]\/\d+$/, '');
-
-  const metodoBtc = (() => {
-    switch (wallet.tipoDireccion) {
-      case 'legacy': return bitcoin.payments.p2pkh;
-      case 'segwit':
-        return (args: bitcoin.payments.Payment) =>
-          bitcoin.payments.p2sh({
-            redeem: bitcoin.payments.p2wpkh(args),
-            network: args.network,
-          });
-      case 'native':
-      default: return bitcoin.payments.p2wpkh;
+    if (!mnemonic || !validarMnemonic(mnemonic)) {
+        console.error("Mnemonic inválido.");
+        return;
     }
-  })();
 
-  const direccionesConFondos: BtcAddressUtxo[] = [];
-  let totalConfirmed = new BigNumber(0);
-  let totalUnconfirmed = new BigNumber(0);
+    const testnet = redSeleccionada === 'testnet';
+    const SATOSHIS_IN_BTC = new BigNumber(1e8);
+    const binSeed = bip39.mnemonicToSeedSync(mnemonic);
+    const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+    const apiBase = testnet ? "https://mempool.space/testnet/api" : "https://mempool.space/api";
+    const root = bip32.fromSeed(binSeed, network); // Añadimos network para apuntar a la seleccionada por el usuario
 
-  const escanear = async (cambio: number) => {
-    let index = 0;
-    let vaciasConsecutivas = 0;
-    const BATCH_SIZE = 20;
+    // Se hace por si acaso para eliminar los dos últimos tramos si existieran (no debería ocurrir)
+    const pathBase = wallet.pathBase.replace(/\/[0-1]\/\d+$/, '');
 
-    while (vaciasConsecutivas < 20) {
-      const batch: { path: string; address: string; keyPair: BIP32Interface }[] = [];
+    const metodoBtc = (() => {
+        switch (wallet.tipoDireccion) {
+        case 'legacy': return bitcoin.payments.p2pkh;
+        case 'segwit':
+            return (args: bitcoin.payments.Payment) =>
+            bitcoin.payments.p2sh({
+                redeem: bitcoin.payments.p2wpkh(args),
+                network: args.network,
+            });
+        case 'native':
+        default: return bitcoin.payments.p2wpkh;
+        }
+    })();
 
-      for (let i = 0; i < BATCH_SIZE; i++) {
-        const fullPath = `${pathBase}/${cambio}/${index + i}`;
-        const child = root.derivePath(fullPath);
+    const direccionesConFondos: BtcAddressUtxo[] = [];
+    let totalConfirmed = new BigNumber(0);
+    let totalUnconfirmed = new BigNumber(0);
+
+    // Función para buscar fondos en las direcciones de manera consecutiva, con opción de buscar en las de cambio y en las de recibo
+    // Escanea direcciones secuenciales en el path especificado (recibo o cambio) hasta encontrar 20 vacías consecutivas.
+    // Esto cumple con el "gap limit" estándar de BIP44/BIP49/BIP84.
+    const escanear = async (cambio: number) => {
+        let index = 0;
+        let vaciasConsecutivas = 0;
+        const BATCH_SIZE = 20;
+
+        // Continuar escaneando mientras no se hayan encontrado 20 direcciones vacías seguidas
+        while (vaciasConsecutivas < 20) {
+            const batch: { path: string; address: string; keyPair: BIP32Interface }[] = [];
+
+            // Derivar un lote de 20 direcciones consecutivas
+            for (let i = 0; i < BATCH_SIZE; i++) {
+                const fullPath = `${pathBase}/${cambio}/${index + i}`;
+                const child = root.derivePath(fullPath);
+                const { address } = metodoBtc({ pubkey: Buffer.from(child.publicKey), network });
+
+                if (address) {
+                batch.push({ path: fullPath, address, keyPair: child });
+                }
+            }
+
+            // Consultar los UTXOs de todas las direcciones derivadas en paralelo
+            const respuestas = await Promise.allSettled(
+                batch.map(dir =>
+                fetch(`${apiBase}/address/${dir.address}/utxo`)
+                    .then(r => r.json())
+                    .then((utxos) => ({ ...dir, utxos }))
+                )
+            );
+
+            for (const respuesta of respuestas) {
+                if (respuesta.status === "fulfilled") {
+                const { path, address, utxos, keyPair } = respuesta.value;
+                let confirmados = new BigNumber(0);
+                let noConfirmados = new BigNumber(0);
+
+                // Sumar saldos confirmados y no confirmados de los UTXOs
+                for (const utxo of utxos) {
+                    if (utxo.status.confirmed) confirmados = confirmados.plus(utxo.value);
+                    else noConfirmados = noConfirmados.plus(utxo.value);
+                }
+
+                const total = confirmados.plus(noConfirmados);
+
+                // Si hay fondos, reiniciar contador de vacías y guardar dirección
+                if (total.isGreaterThan(0)) {
+                    vaciasConsecutivas = 0;
+                    direccionesConFondos.push({ path, address, utxos, keyPair });
+                    totalConfirmed = totalConfirmed.plus(confirmados);
+                    totalUnconfirmed = totalUnconfirmed.plus(noConfirmados);
+                    console.log(`✔ Fondos en ${address} (${path})`);
+                } else {
+                    vaciasConsecutivas++;
+                }
+                } else {
+                vaciasConsecutivas++;
+                }
+            }
+
+            index += BATCH_SIZE;
+        }
+    };
+
+    // Escanear direcciones externas y de cambio
+    await escanear(0);
+    await escanear(1);
+
+    // Añadir dirección de cambio aunque no tenga fondos si no se detectó ninguna
+    let cambioConFondos = direccionesConFondos.find(d => d.path.includes('/1/'));
+    if (!cambioConFondos) {
+        const child = root.derivePath(`${pathBase}/1/0`);
         const { address } = metodoBtc({ pubkey: Buffer.from(child.publicKey), network });
-
         if (address) {
-          batch.push({ path: fullPath, address, keyPair: child });
+        cambioConFondos = { path: `${pathBase}/1/0`, address, utxos: [], keyPair: child };
+        direccionesConFondos.push(cambioConFondos);
         }
-      }
-
-      const respuestas = await Promise.allSettled(
-        batch.map(dir =>
-          fetch(`${apiBase}/address/${dir.address}/utxo`)
-            .then(r => r.json())
-            .then((utxos) => ({ ...dir, utxos }))
-        )
-      );
-
-      for (const respuesta of respuestas) {
-        if (respuesta.status === "fulfilled") {
-          const { path, address, utxos, keyPair } = respuesta.value;
-          let confirmados = new BigNumber(0);
-          let noConfirmados = new BigNumber(0);
-
-          for (const utxo of utxos) {
-            if (utxo.status.confirmed) confirmados = confirmados.plus(utxo.value);
-            else noConfirmados = noConfirmados.plus(utxo.value);
-          }
-
-          const total = confirmados.plus(noConfirmados);
-          if (total.isGreaterThan(0)) {
-            vaciasConsecutivas = 0;
-            direccionesConFondos.push({ path, address, utxos, keyPair });
-            totalConfirmed = totalConfirmed.plus(confirmados);
-            totalUnconfirmed = totalUnconfirmed.plus(noConfirmados);
-            console.log(`✔ Fondos en ${address} (${path})`);
-          } else {
-            vaciasConsecutivas++;
-          }
-        } else {
-          vaciasConsecutivas++;
-        }
-      }
-
-      index += BATCH_SIZE;
     }
-  };
 
-  // Escanear direcciones externas y de cambio
-  await escanear(0);
-  await escanear(1);
+    const totalBtc = totalConfirmed.plus(totalUnconfirmed).div(SATOSHIS_IN_BTC);
+    console.log(`\nResumen total cuenta ${wallet.nombre}:`);
+    console.log(`✔ Confirmado: ${totalConfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
+    console.log(`✔ No confirmado: ${totalUnconfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
+    console.log(`✔ Total: ${totalBtc.toFixed(8)} BTC`);
 
-  // Añadir dirección de cambio aunque no tenga fondos si no se detectó ninguna
-  let cambioConFondos = direccionesConFondos.find(d => d.path.includes('/1/'));
-  if (!cambioConFondos) {
-    const child = root.derivePath(`${pathBase}/1/0`);
-    const { address } = metodoBtc({ pubkey: Buffer.from(child.publicKey), network });
-    if (address) {
-      cambioConFondos = { path: `${pathBase}/1/0`, address, utxos: [], keyPair: child };
-      direccionesConFondos.push(cambioConFondos);
-    }
-  }
-
-  const totalBtc = totalConfirmed.plus(totalUnconfirmed).div(SATOSHIS_IN_BTC);
-  console.log(`\nResumen total cuenta ${wallet.nombre}:`);
-  console.log(`✔ Confirmado: ${totalConfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
-  console.log(`✔ No confirmado: ${totalUnconfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
-  console.log(`✔ Total: ${totalBtc.toFixed(8)} BTC`);
-
-  return {
-    totalConfirmed,
-    totalUnconfirmed,
-    totalBtc,
-    direccionesConFondos,
-  };
+    return {
+        totalConfirmed,
+        totalUnconfirmed,
+        totalBtc,
+        direccionesConFondos,
+    };
 }
 
+/**
+ * Escanea todas las direcciones de una wallet HD (externas y de cambio)
+ * y obtiene las transacciones relacionadas, formateándolas para mostrarlas después
+ * 
+ * @param mnemonic - Frase semilla BIP39
+ * @param wallet - Información de la wallet
+ * @param redSeleccionada - 'mainnet' o 'testnet'
+ * @returns Array de transacciones BTC formateadas o undefined si falla la validación
+ */
 export async function obtenerTxsBtc(
   mnemonic: string | null,
   wallet: WalletInfo,
@@ -325,6 +361,10 @@ export async function obtenerTxsBtc(
     const resultados: BtcTransactionFormatted[] = [];
     const direccionesCambio = new Set<string>();
 
+    /**
+     * Escanea direcciones en la rama indicada (0: externas, 1: cambio)
+     * Busca transacciones asociadas y las guarda formateadas.
+     */
     const escanear = async (cambio: number) => {
         let index = 0;
         let vaciasConsecutivas = 0;
@@ -347,6 +387,7 @@ export async function obtenerTxsBtc(
                 }
             }
 
+            // Obtener las transacciones asociadas a cada dirección del batch
             const respuestas = await Promise.allSettled(
                 batch.map(dir =>
                 fetch(`${apiBase}/address/${dir.address}/txs`)
@@ -395,6 +436,8 @@ export async function obtenerTxsBtc(
     await escanear(1); // Direcciones de cambio
     await escanear(0); // Direcciones externas
 
+    // Ordenar las transacciones:
+    // Primero no confirmadas, luego por altura de bloque descendente
     resultados.sort((a, b) => {
         // Si a no está confirmada pero b sí, entonces a va antes
         if (!a.status.confirmed && b.status.confirmed) return -1;
@@ -412,6 +455,7 @@ export async function obtenerTxsBtc(
     return resultados;
 }
 
+// Función para comprobar si una direción de BTC es válida
 export function esDireccionBtcValida(address: string, redSeleccionada: 'mainnet' | 'testnet'): boolean {
     let testnet = false;
     if (redSeleccionada === 'testnet') testnet = true;
@@ -447,6 +491,7 @@ export function esDireccionBtcValida(address: string, redSeleccionada: 'mainnet'
     return false;
 }
 
+// Función para comprobar si una dirección de ETH es válida
 export function esDireccionEthValida(address: string): boolean {
     return ethers.isAddress(address);
 }
@@ -487,6 +532,7 @@ function estimateTxSize(numInputs: number, numOutputs: number, addresses: string
   return numInputs * inputSize + numOutputs * outputSize + 10; // +10 para encabezados
 }
 
+// Función para calcular la cantidad total que se debe enviar teniendo en cuenta la comisión
 export async function calcularEnvioTotalBtc(
   direccionesConFondos: BtcAddressUtxo[],
   destino: string,
@@ -530,6 +576,8 @@ export async function calcularEnvioTotalBtc(
         }
     }
 
+    // Creamos una transacción dummy para estimar la comisión en función a
+    // las direcciones a las que se va a usar en la transacción
     const psbt = new bitcoin.Psbt({ network });
 
     for (const utxo of utxos) {
@@ -595,12 +643,15 @@ export async function calcularEnvioTotalBtc(
 
     if (cantidadBtc !== 0) {
         const cambioRestante = totalDisponible.minus(cantidadSatoshis);
-        if (cambioRestante.isGreaterThan(0)) numOutputs++;
+        if (cambioRestante.isGreaterThan(0)) numOutputs++; // Añadimos un output más en el caso de que haya una dirección de cambio
     } 
 
+    // Calculamos el tamaño en bytes de la transacción
     const estimatedVbytes = estimateTxSize(utxos.length, numOutputs, utxos.map(u => u.address));
+    // Calculamos el fee a partir del tamaño y los sats per byte que cuesta la tx
     let fee = new BigNumber(estimatedVbytes).multipliedBy(satPerVbyte).integerValue();
-    if (fee.isLessThan(351)) fee = new BigNumber(351);
+
+    if (fee.isLessThan(351)) fee = new BigNumber(351); // En el caso de que la tarifa sea muy pequeña, para evitar error de "fee too low"
 
     // Cantidad que realmente se puede enviar
     const cantidadEnviar = totalDisponible.minus(fee);
@@ -660,8 +711,10 @@ export async function enviarBtc(
 
     const network = testnet ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
 
+    // Preparamos la transacción tipo PSBT (Partially Signed Bitcoin Transaction)
     const psbt = new bitcoin.Psbt({ network });
 
+    // Recorremos la lista de Unspent Transaction Outputs recogidas
     for (const utxo of utxos) {
         const pubkey = Buffer.from(utxo.keyPair.publicKey);
 
@@ -691,6 +744,7 @@ export async function enviarBtc(
                 throw new Error(`Tipo de dirección no soportado para ${utxo.address}`);
         }
 
+        // En el caso de que sea legacy, cambiamos la forma de enviar y firmar la transacción
         if (tipo === 'legacy') {
             const rawTx = await fetchRawTransaction(utxo.txid, testnet);
             psbt.addInput({
@@ -715,7 +769,7 @@ export async function enviarBtc(
                 value: utxo.value,
             },
         };
-
+            // En el caso de que sea SegWit, añadimos el redeemScript necesario de la tecnología
             if (tipo === 'segwit') {
                 input.redeemScript = bitcoin.payments.p2wpkh({ pubkey, network }).output!;
             }
@@ -724,6 +778,7 @@ export async function enviarBtc(
         }
     }
 
+    // Si el fee es 500 por alguna razón (el por defecto), recalculamos la comisión
     if (feeSat.eq(500)) {
         const numInputs = utxos.length;
         const tieneCambio = totalSeleccionado.isGreaterThan(cantidadSatoshis);
@@ -738,16 +793,18 @@ export async function enviarBtc(
         console.log(`Fee estimado: ${feeSat.toString()} sat (${satPerVbyte} sat/vB × ${estimatedSize} vB)`);
     }
 
+    // Añadimos el destino a la transacción
     psbt.addOutput({
         address: destino,
         value: cantidadSatoshis.toNumber(),
     });
 
+    // Calculamos el cambio y añadimos como destino la dirección de cambio para reenviar lo sobrante
     const cambioRestante = totalSeleccionado.minus(cantidadSatoshis.plus(feeSat));
     if (cambioRestante.isGreaterThan(0)) {
         const dirCambio = direccionesConFondos.find((d) => d.path.includes('/1/'));
         if (!dirCambio) {
-            throw new Error("Error FATAL: No se ha encontrado dirección de cambio")
+            throw new Error("Error FATAL: No se ha encontrado dirección de cambio"); // JAMÁS debería pasar. Añadimos una de manera OBLIGATORIA.
         }
         psbt.addOutput({
             address: dirCambio.address,
@@ -755,7 +812,7 @@ export async function enviarBtc(
         });
     }
 
-    // Firmar inputs
+    // Firmamos los inputs
     utxos.forEach((utxo, i) => {
         const keyPair = utxo.keyPair;
         
@@ -789,7 +846,7 @@ export async function enviarBtc(
             // Firmar el input
             psbt.signInput(i, signer);
             
-            // Opcional: Validar firma inmediatamente
+            // Comprobamos que todas las firmas puedan ser validadas
             const isValid = psbt.validateSignaturesOfInput(i, (pubkey, msghash, signature) => {
                 return ECPair.fromPublicKey(pubkey).verify(msghash, signature);
             });
@@ -803,11 +860,13 @@ export async function enviarBtc(
         }
     });
 
+    // Validamos todas las firmas
     psbt.validateSignaturesOfAllInputs((pubkey, msghash, signature) =>
         ECPair.fromPublicKey(pubkey).verify(msghash, signature)
     );
     psbt.finalizeAllInputs();
 
+    // Sacamos el hex de la transacción
     const txHex = psbt.extractTransaction().toHex();
 
     // Enviar a la red
@@ -832,6 +891,7 @@ export async function enviarBtc(
         return await response.text(); // devuelve el txid
     }
 
+    // Llamada a la función para enviar al transacción a la red de BTC
     const txid = await broadcastTx(txHex);
 
     return {
@@ -948,6 +1008,7 @@ export async function calcularFeeEth(
 
     const red = redSeleccionada === 'mainnet' ? 'homestead' : 'sepolia';
 
+    // Proveedor API (en realidad esta API Key debería ocultarse, pero es gratuita)
     const provider = new ethers.AlchemyProvider(red, "w3jHpOUC794ll1nhzQxVITITAs1MBWNM");
 
     const signer = new ethers.Wallet(Buffer.from(clavePrivada).toString('hex'), provider);
@@ -1006,6 +1067,7 @@ export async function calcularEnvioTotalEth(
     };
 }
 
+// Función para enviar Ether
 export async function enviarEth(
     wallet: WalletInfo,
     mnemonic: string,
@@ -1037,6 +1099,7 @@ export async function enviarEth(
 
     const signer = new ethers.Wallet(Buffer.from(clavePrivada).toString('hex'), provider);
 
+    // Detalles de la transacción
     const tx = {
         to: destino,
         value: ethers.parseEther(cantidadEth),
@@ -1045,8 +1108,9 @@ export async function enviarEth(
     };
 
     try {
+        // Esperamos a que se envíe la transacción
         const response = await signer.sendTransaction(tx);
-        await response.wait(1, 180000);
+        await response.wait(1, 180000); // Se espera un máximo de 3 minutos
         console.log("Transacción enviada con éxito:", response.hash);
         return response.hash;
     } catch (error: any) {

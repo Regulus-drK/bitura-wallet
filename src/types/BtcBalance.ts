@@ -67,8 +67,7 @@ export interface BtcTransactionRaw {
   status: BtcTxStatus;
 }
 
-// Interfaces formateadas sin usar Omit, explícitas
-
+// Interfaces formateadas
 export interface BtcTxVinFormatted {
   txid: string;
   vout: number;
