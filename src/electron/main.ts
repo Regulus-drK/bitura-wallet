@@ -40,7 +40,9 @@ function createMainWindow(): BrowserWindow {
                 : path.join(app.getAppPath(), 'dist-electron', 'preload.js'),
             // partition: 'persist:default',
             webSecurity: false
-        }
+        },
+        // Solo para desarrollo el icono
+        icon: path.join(process.cwd(), 'src', 'assets', 'favicon.ico') 
     });
 
     if (isDev()) {
