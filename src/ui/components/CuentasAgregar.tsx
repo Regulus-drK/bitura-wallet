@@ -18,15 +18,63 @@ function CuentasAgregar() {
     const [nameEmpty, setNameEmpty] = useState<boolean>(false);
     const [nameTooLong, setNameTooLong] = useState<boolean>(false);
     const [selectedCoin, setSelectedCoin] = useState<'BTC' | 'ETH' | null>(null);
+    const [mostrarAvanzado, setMostrarAvanzado] = useState<boolean>(false);
+    const [indexPrivada, setIndexPrivada] = useState<number>(0);
+    const [indexTaken, setIndexTaken] = useState<boolean>(false);
     const [selectedTipo, setSelectedTipo] = useState<'legacy' | 'segwit' | 'native'>('native');
     const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet'>('mainnet');
 
+    // Efectos React
+
+    // Efecto para detectar la red seleccionada por el usuario.
+    // Se ejecuta al montar el componente.
     useEffect(() => {
         const detectarRedBtcSeleccionada = async () => {
             setRedBtcSeleccionada(await getRedSeleccionada());
         }
         detectarRedBtcSeleccionada();
     }, []);
+
+    // Efecto encargado de fijar automáticamente el siguiente índice de la cuenta (clave privada)
+    // en función del último más grande añadido.
+    useEffect(() => {
+        if (selectedCoin === null) return;
+
+        if (wallets.length !== 0) {
+            if (selectedCoin === 'BTC') {
+                let walletsFiltradas = wallets.filter(
+                    w => w.tipoMoneda === 'BTC' && w.tipoDireccion === selectedTipo &&
+                    w.red === redBtcSeleccionada);
+
+                // Si existen cuentas de este tipo, sacamos el índice más alto y le sumamos 1
+                // para asignar el siguiente a la nueva cuenta
+                if (walletsFiltradas.length !== 0) {
+                    let walletIndiceMasAlto = walletsFiltradas.reduce((max, actual) => {
+                        return actual.indicePrivada > max.indicePrivada ? actual : max;
+                    });
+                    // Sacamos el último indice de privada
+                    setIndexPrivada(walletIndiceMasAlto.indicePrivada + 1);
+                } else { // Sino, lo ponemos a 0 (nueva cuenta sin tener anteriores)
+                    setIndexPrivada(0);
+                }
+            } else { // Caso ETH
+                let walletsFiltradas = wallets.filter(
+                    w => w.tipoMoneda === 'ETH');
+
+                // Si existen cuentas de este tipo, sacamos el índice más alto y le sumamos 1
+                // para asignar el siguiente a la nueva cuenta
+                if (walletsFiltradas.length !== 0) {
+                    let walletIndiceMasAlto = walletsFiltradas.reduce((max, actual) => {
+                        return actual.indicePrivada > max.indicePrivada ? actual : max;
+                    });
+                    // Sacamos el último indice de privada
+                    setIndexPrivada(walletIndiceMasAlto.indicePrivada + 1);
+                } else { // Sino, lo ponemos a 0 (nueva cuenta sin tener anteriores)
+                    setIndexPrivada(0);
+                }
+            }
+        }
+    }, [selectedCoin, selectedTipo]) // Dependencias que activan el efecto al cambiar
 
     const navigate = useNavigate();
 
@@ -116,25 +164,23 @@ function CuentasAgregar() {
             return false;
         }
 
-        let ultimoIndex = 0;
-
+        // Control para verificar si el índice de la cuenta ya está en uso
         if (wallets.length !== 0) {
             let walletsFiltradas = wallets.filter(
                 w => w.tipoMoneda === 'BTC' && w.tipoDireccion === selectedTipo &&
                 w.red === redBtcSeleccionada);
 
             if (walletsFiltradas.length !== 0) {
-                let walletIndiceMasAlto = walletsFiltradas.reduce((max, actual) => {
-                    return actual.indicePrivada > max.indicePrivada ? actual : max;
-                });
-                // Sacamos el último indice de privada
-                ultimoIndex = walletIndiceMasAlto.indicePrivada + 1;
+                if (walletsFiltradas.some(w => w.indicePrivada === indexPrivada)) {
+                    setIndexTaken(true);
+                    return false;
+                }
             }
         }
 
         try {
             let resultado = await crearYGuardarWalletBtc(nombreWallet, mnemonic, 
-                ultimoIndex, selectedTipo, redBtcSeleccionada);
+                indexPrivada, selectedTipo, redBtcSeleccionada);
             if (resultado) { // Actualizamos las wallets en memoria si es correcto
                 const allWallets = await getAllWallets();
                 setWallets(allWallets);
@@ -158,24 +204,22 @@ function CuentasAgregar() {
             return false;
         }
 
-        let ultimoIndex = 0;
-
+        // Control para verificar si el índice de la cuenta ya está en uso
         if (wallets.length !== 0) {
             let walletsFiltradas = wallets.filter(
                 w => w.tipoMoneda === 'ETH');
 
             if (walletsFiltradas.length !== 0) {
-                let walletIndiceMasAlto = walletsFiltradas.reduce((max, actual) => {
-                    return actual.indicePrivada > max.indicePrivada ? actual : max;
-                });
-                // Sacamos el último indice de privada
-                ultimoIndex = walletIndiceMasAlto.indicePrivada + 1;
+                if (walletsFiltradas.some(w => w.indicePrivada === indexPrivada)) {
+                    setIndexTaken(true);
+                    return false;
+                }
             }
         }
 
         try {
-            let resultado = await crearYGuardarWalletEth(nombreWallet, mnemonic, ultimoIndex);
-            if (resultado) {
+            let resultado = await crearYGuardarWalletEth(nombreWallet, mnemonic, indexPrivada);
+            if (resultado) { // Actualizamos las wallets en memoria si es correcto
                 const allWallets = await getAllWallets();
                 setWallets(allWallets);
             }
@@ -184,6 +228,67 @@ function CuentasAgregar() {
             console.error('Error al crear la cuenta: ', err);
             return false;
         }
+    }
+
+    // Función que devuelve el JSX de el desplegable "Avanzado",
+    // pensado para el número de la cuenta asignable
+    const desplegableAvanzado = () => {
+        return (
+            <div className="text-center relative mt-4 min-h-[12.5rem]">
+                <button
+                    onClick={() => setMostrarAvanzado(prev => !prev)}
+                    className="text-gray-300 hover:text-white cursor-pointer text-sm flex items-center justify-center mx-auto"
+                >
+                    <span className="mr-1">Avanzado</span>
+                    <svg
+                        className={`w-4 h-4 transition-transform duration-200 ${mostrarAvanzado ? "rotate-180" : ""}`}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                    >
+                        <path d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                {mostrarAvanzado && (
+                    <div className="mt-2">
+                        <span className="text-white text-sm min-w-[80px] text-left mr-3">
+                            Número de Cuenta
+                        </span>
+                        <input
+                            type="number"
+                            step="any"
+                            placeholder="Avanzado"
+                            value={indexPrivada}
+                            onChange={(e) => {
+                                const valor = e.target.value;
+
+                                // Permitir solo enteros positivos de hasta 3 cifras
+                                if (/^\d{0,3}$/.test(valor)) {
+                                    setIndexPrivada(Number(valor));
+                                }
+                                setIndexTaken(false);
+                            }}
+                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                            className={`w-full max-w-[65px] font-semibold py-1 px-3 mb-1 rounded-xl shadow-md
+                                transition duration-300 border mx-auto cursor-text text-white bg-neutral-800 border-gray-500 hover:bg-neutral-900`}
+                        />
+
+                        <p className="text-sm text-gray-400 mt-1">
+                            Crear cuenta a partir del número de la clave privada asociada.
+                        </p>
+                        <p className="text-sm text-gray-400 mt-1">
+                            No lo modifique si desea crear la cuenta a continuación de las que tiene.
+                        </p>
+                    </div>
+                )}
+                {indexTaken && (
+                    <h2 className="text-center mt-4 text-lg font-semibold text-red-500 select-none">
+                        El número elegido de la cuenta ya está en uso
+                    </h2>
+                )}
+            </div>
+        )
     }
 
     return(
@@ -199,7 +304,11 @@ function CuentasAgregar() {
                         ].map(({ id, nombre, logo }) => (
                             <button
                                 key={id}
-                                onClick={() => setSelectedCoin(id as 'BTC' | 'ETH')}
+                                onClick={() => {
+                                    setSelectedCoin(id as 'BTC' | 'ETH')
+                                    setMostrarAvanzado(false);
+                                    setIndexTaken(false);
+                                }}
                                 className={`flex items-center gap-4 px-6 py-5 w-64 cursor-pointer rounded-2xl border-2 transition-colors
                                     ${selectedCoin === id
                                         ? 'border-green-500 bg-neutral-900'
@@ -251,6 +360,9 @@ function CuentasAgregar() {
                                     </h2>
                                 )}
                             </div>
+                            {selectedCoin === 'ETH' && (
+                                desplegableAvanzado()
+                            )}
                         </div>
                     )}
                 </>
@@ -306,6 +418,8 @@ function CuentasAgregar() {
                                 )}
                             </div>
                         )}
+
+                        {desplegableAvanzado()}
                     </div>
                 </div>
             )}

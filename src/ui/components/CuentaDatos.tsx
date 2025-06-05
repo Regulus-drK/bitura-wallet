@@ -247,9 +247,12 @@ function CuentaDatos() {
             {/* Botón sincronizar */}
             <button
               onClick={() => loadPricesYBalances()}
-              className="flex items-center gap-2 text-sm px-4 py-2 select-none rounded-lg border border-gray-500 cursor-pointer text-white bg-neutral-800 hover:bg-neutral-700 transition"
+              disabled={!isTxsLoaded}
+              className="flex items-center gap-2 text-sm px-4 py-2 select-none rounded-lg 
+              border border-gray-500 cursor-pointer text-white bg-neutral-800 hover:bg-neutral-700 
+              transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-neutral-800"
             >
-              <RefreshCw className="w-4 h-4 text-green-500" />
+              <RefreshCw className={`w-4 h-4 text-green-500 ${!isTxsLoaded ? 'animate-spin' : ''}`} />
               <span className="font-semibold">Sincronizar</span>
             </button>
           </div>

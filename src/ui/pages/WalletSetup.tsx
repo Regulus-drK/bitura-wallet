@@ -14,13 +14,16 @@ const WalletCrear = React.lazy(() => import('../components/WalletCrear'));
 const WalletCrearVerificacion = React.lazy(() => import('../components/WalletCrearVerificacion'));
 const WalletCrearPassword = React.lazy(() => import('../components/WalletCrearPassword'));
 
+// Componente padre de la inicialización de la frase semilla y aplicación
 function WalletSetup() {
     const { clearPassword } = useAuth();
     const [mnemonic, setMnemonic] = useState<string[] | null>(null);
     const [mnemonicImportado, setMnemonicImportado] = useState<string[] | null>(null);
+    // Opciones a elegir y acceder a los hijos
     const [mode, setMode] = useState<
     'opciones' | 'importar' | 'crear' | 'verificacion' | 'password'
     >('opciones');
+    // Usado para volver a un hijo u otro en función de la procedencia
     const [origenPassword, setOrigenPassword] = useState<'importar' | 'verificacion' | null>(null);
 
     const isConfigured = useWalletConfig();

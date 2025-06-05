@@ -45,6 +45,8 @@ function CuentaAjustes() {
         navigate(path, { state: { wallet } });
     }
 
+    // Función para gestionar el nombre de la cuenta y comprobar si cumple
+    // los requisitos necesarios para ser asignado
     const handleWalletsName = (): boolean => {
         if (!redBtcSeleccionada) return false;
         
@@ -174,6 +176,7 @@ function CuentaAjustes() {
                     </div>
                 </div>
 
+                {/* Sección Cambiar nombre de cuenta */}
                 <div className="w-full max-w-5xl bg-neutral-700 rounded-xl p-4 flex items-center justify-between shadow-md mb-5">
                     <div className="flex flex-col text-left">
                         <span className="text-lg font-semibold text-white">
@@ -222,7 +225,26 @@ function CuentaAjustes() {
                         />
                     </div>
                 </div>
-                <h1></h1>
+
+                {/* Sección Path de la cuenta */}
+                <div className="w-full max-w-5xl bg-neutral-700 rounded-xl p-4 flex items-center justify-between shadow-md mb-5">
+                    <div className="flex flex-col text-left">
+                        <span className="text-lg font-semibold text-white">
+                            Path de la cuenta
+                        </span>
+                        <span className="text-sm text-gray-400">
+                            Información del path base de la cuenta actual. Datos para usuarios avanzados.
+                        </span>
+                    </div>
+
+                    <span 
+                        className="group flex items-center gap-2 text-sm px-4 py-2 rounded-lg text-white bg-neutral-800"
+                    >
+                        {wallet.pathBase}
+                    </span>
+                </div>
+
+                {/* Sección Borrar cuenta */}
                 <div className="w-full max-w-5xl bg-neutral-700 rounded-xl p-4 flex items-center justify-between shadow-md mb-5">
                     <div className="flex flex-col text-left">
                         <span className="text-lg font-semibold text-white">
@@ -310,7 +332,7 @@ function CuentaAjustes() {
                     <>
                         {!nombreChangedSuccess && (
                             <div
-                                className={`absolute left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl 
+                                className={`absolute left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl z-100
                                 shadow-lg flex items-center gap-3 text-white bg-red-500 transition-all duration-500 ease-in-out
                                 ${salidaToast ? "top-0 opacity-0" : animacionEntrada ? "top-6 opacity-100" : "top-0 opacity-0"}`}
                             >
@@ -328,7 +350,7 @@ function CuentaAjustes() {
                         )}
                         {nombreChangedSuccess && (
                             <div
-                                className={`absolute left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl 
+                                className={`absolute left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl z-100
                                 shadow-lg flex items-center gap-3 text-white bg-emerald-600 transition-all duration-500 ease-in-out
                                 ${salidaToast ? "top-0 opacity-0" : animacionEntrada ? "top-6 opacity-100" : "top-0 opacity-0"}`}
                             >

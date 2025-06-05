@@ -27,6 +27,8 @@ function Cuentas() {
         detectarRedSeleccionada();
     }, []);
 
+    // Efecto encargado de cargar los fondos para mostrarlos en la
+    // vista previa de cada una de las cuentas al iniciar el componente
     useEffect(() => {
         if (!password) {
             navigate("/");

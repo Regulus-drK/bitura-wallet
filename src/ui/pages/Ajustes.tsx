@@ -288,7 +288,7 @@ function Ajustes() {
                 <>
                     {passwordChanged && (
                         <div
-                            className={`absolute left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl 
+                            className={`absolute left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl z-100
                             shadow-lg flex items-center gap-3 text-white bg-emerald-600 transition-all duration-500 ease-in-out
                             ${salidaToast ? "top-0 opacity-0" : animacionEntrada ? "top-6 opacity-100" : "top-0 opacity-0"}`}
                         >

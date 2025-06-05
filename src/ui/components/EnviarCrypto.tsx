@@ -58,6 +58,7 @@ function EnviarCrypto() {
     const walletsETH = wallets.filter(w => w.tipoMoneda === "ETH");
 
     // Efectos React
+    
     useEffect(() => {
         // En el caso de que no haya wallet (que se entre a la ventana desde Enviar
         // en lugar de desde los datos de una cuenta en concreto)
@@ -992,12 +993,17 @@ function EnviarCrypto() {
                     <div className="text-white text-lg max-w-md break-words text-center px-4">
                         <h1>{txError}</h1>
                     </div>
-                    {txError.includes("TIMEOUT") && (
+                    {txError.toLowerCase().includes("TIMEOUT") && (
                         <div className="text-white text-lg">
                             <h1>Tiempo expirado al intentar enviar la transacción. Si este error prosigue, se debe a que el nodo de la red se encuentra saturado.</h1>
                             {redSeleccionada === 'testnet' && (
                                 <h1 className="text-amber-400 mt-5">Se encuentra operando en Testnet. Es frecuente que a veces la red de pruebas se encuentre saturada. Inténtelo más tarde.</h1>
                             )}
+                        </div>
+                    )}
+                    {txError.includes("Failed to fetch") && (
+                        <div className="text-white text-lg">
+                            <h1>No está conectado a la red. Para poder realizar una transferencia, asegúrese de estar conectado a Internet.</h1>
                         </div>
                     )}
                     <div className="text-white text-lg">

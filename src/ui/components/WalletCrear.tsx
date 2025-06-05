@@ -3,6 +3,8 @@ import { useState } from "react";
 import { generateMnemonic } from "../../services/apiService";
 import { walletShouldBeConfigured } from "../../hooks/walletShouldBeConfigured";
 
+// Tipo de interfaz que se encuentra en los demás hijos
+// Sirve para agregar ciertos valores y pasarle ciertas variables en concreto
 interface WalletCrearProps {
     onBack: () => void;
     onNext: () => void;

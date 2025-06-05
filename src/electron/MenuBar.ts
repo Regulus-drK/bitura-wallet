@@ -5,7 +5,7 @@ import { isDev, ventanaConfirmarDeleteConfigFiles } from './util.js';
 if (process.platform === 'darwin') {
   app.setAboutPanelOptions({
     applicationName: 'Bitura Wallet',
-    applicationVersion: '1.0.1',
+    applicationVersion: '1.0.2',
     copyright: '© 2025 Jorge Puentes',
     credits: 'Desarrollado por Jorge Puentes'
   });

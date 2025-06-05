@@ -223,6 +223,8 @@ export async function verificarFondosDireccionesBtc(
     const direccionesConFondos: BtcAddressUtxo[] = [];
     let totalConfirmed = new BigNumber(0);
     let totalUnconfirmed = new BigNumber(0);
+    let numConexionesExitosas: number = 0;
+    let numConexionesFallidas: number = 0;
 
     // Función para buscar fondos en las direcciones de manera consecutiva, con opción de buscar en las de cambio y en las de recibo
     // Escanea direcciones secuenciales en el path especificado (recibo o cambio) hasta encontrar 20 vacías consecutivas.
@@ -258,30 +260,40 @@ export async function verificarFondosDireccionesBtc(
 
             for (const respuesta of respuestas) {
                 if (respuesta.status === "fulfilled") {
-                const { path, address, utxos, keyPair } = respuesta.value;
-                let confirmados = new BigNumber(0);
-                let noConfirmados = new BigNumber(0);
+                    const { path, address, utxos, keyPair } = respuesta.value;
+                    let confirmados = new BigNumber(0);
+                    let noConfirmados = new BigNumber(0);
 
-                // Sumar saldos confirmados y no confirmados de los UTXOs
-                for (const utxo of utxos) {
-                    if (utxo.status.confirmed) confirmados = confirmados.plus(utxo.value);
-                    else noConfirmados = noConfirmados.plus(utxo.value);
-                }
+                    // Sumar saldos confirmados y no confirmados de los UTXOs
+                    for (const utxo of utxos) {
+                        if (utxo.status.confirmed) confirmados = confirmados.plus(utxo.value);
+                        else noConfirmados = noConfirmados.plus(utxo.value);
+                    }
 
-                const total = confirmados.plus(noConfirmados);
+                    const total = confirmados.plus(noConfirmados);
 
-                // Si hay fondos, reiniciar contador de vacías y guardar dirección
-                if (total.isGreaterThan(0)) {
-                    vaciasConsecutivas = 0;
-                    direccionesConFondos.push({ path, address, utxos, keyPair });
-                    totalConfirmed = totalConfirmed.plus(confirmados);
-                    totalUnconfirmed = totalUnconfirmed.plus(noConfirmados);
-                    console.log(`✔ Fondos en ${address} (${path})`);
+                    // Si hay fondos, reiniciar contador de vacías y guardar dirección
+                    if (total.isGreaterThan(0)) {
+                        vaciasConsecutivas = 0;
+                        direccionesConFondos.push({ path, address, utxos, keyPair });
+                        totalConfirmed = totalConfirmed.plus(confirmados);
+                        totalUnconfirmed = totalUnconfirmed.plus(noConfirmados);
+                        console.log(`✔ Fondos en ${address} (${path})`);
+                    } else {
+                        vaciasConsecutivas++;
+                    }
+                    numConexionesExitosas++;
                 } else {
                     vaciasConsecutivas++;
-                }
-                } else {
-                vaciasConsecutivas++;
+
+                    // Controlamos el error
+                    if (respuesta.reason instanceof TypeError) {
+                        // Controlamos que el error sea que no se ha podido hacer fetch,
+                        // es decir que el usuario no tiene conexión a internet
+                        if (respuesta.reason.message.includes('Failed to fetch')) {
+                            numConexionesFallidas++;
+                        }
+                    }
                 }
             }
 
@@ -304,11 +316,19 @@ export async function verificarFondosDireccionesBtc(
         }
     }
 
-    const totalBtc = totalConfirmed.plus(totalUnconfirmed).div(SATOSHIS_IN_BTC);
-    console.log(`\nResumen total cuenta ${wallet.nombre}:`);
-    console.log(`✔ Confirmado: ${totalConfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
-    console.log(`✔ No confirmado: ${totalUnconfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
-    console.log(`✔ Total: ${totalBtc.toFixed(8)} BTC`);
+    let totalBtc: BigNumber;
+
+    // Control de conexiones exitosas vs fallidas
+    if (numConexionesExitosas > numConexionesFallidas) {
+        totalBtc = totalConfirmed.plus(totalUnconfirmed).div(SATOSHIS_IN_BTC);
+        console.log(`\nResumen total cuenta ${wallet.nombre}:`);
+        console.log(`✔ Confirmado: ${totalConfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
+        console.log(`✔ No confirmado: ${totalUnconfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
+        console.log(`✔ Total: ${totalBtc.toFixed(8)} BTC`)
+    } else { // Si hay más fallidas que exitosas, no se devuelve nada (se actua como si el usuario no tuviera internet)
+        console.error(`Ha habido un fallo al consultar los saldos de ${wallet.nombre}. Posiblemente no haya internet disponible. Se devolverá nulo.`)
+        return null;
+    }
 
     return {
         totalConfirmed,
@@ -1032,6 +1052,7 @@ export async function calcularFeeEth(
     };
 }
 
+// Función para calcular el envio de todos los fondos de ETH + comisión
 export async function calcularEnvioTotalEth(    
     wallet: WalletInfo,
     mnemonic: string,

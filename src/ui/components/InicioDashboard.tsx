@@ -46,6 +46,7 @@ function InicioDashboard() {
     };
 
     const sincronizarManual = async () => {
+        setIsRefreshing(true);
         // Limpiar el intervalo existente
         if (intervalRef.current) {
             clearInterval(intervalRef.current);
@@ -193,7 +194,9 @@ function InicioDashboard() {
             }
         }
 
-        if (wallets.length !== 0) {
+        if (wallets.filter(w => w.tipoMoneda === "BTC" && 
+                    w.red === redSeleccionada).length !== 0
+                || wallets.filter(w => w.tipoMoneda === 'ETH').length !== 0) {
             cargarDatosPortfolio();
         } else {
             const fecha = new Date();
@@ -376,7 +379,10 @@ function InicioDashboard() {
                     </div>
                 </div>
 
-                {wallets.length === 0 ? (
+                {/* Filtramos por red y moneda por si hay cuenta de BTC en testnet y no en mainnet, mostrar el cartel de vacío */}
+                {wallets.filter(w => w.tipoMoneda === "BTC" && 
+                    w.red === redSeleccionada).length === 0
+                && wallets.filter(w => w.tipoMoneda === 'ETH').length === 0 ? (
                     <div className="mb-5 bg-gradient-to-br from-purple-900/20 to-neutral-900/30 rounded-2xl p-8 text-center border border-dashed border-purple-500/40 transition-all duration-300 hover:shadow-lg">
                         <div className="max-w-md mx-auto">
                             <div className="flex justify-center mb-4">

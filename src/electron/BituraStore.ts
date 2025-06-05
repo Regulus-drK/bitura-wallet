@@ -1,3 +1,4 @@
+// Interfaces para el config.json de la aplicación
 export interface BituraStore {
   walletConfigured: boolean;
   redSeleccionada: 'mainnet' | 'testnet';
