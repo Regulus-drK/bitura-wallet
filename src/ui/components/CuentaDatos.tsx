@@ -68,7 +68,6 @@ function CuentaDatos() {
       if (!datos) {
         setModoOffline(true);
         setIsTxsLoaded(true);
-        showToast("No se ha podido recuperar datos. Se muestran datos guardados.", "error");
         return;
       }
 
@@ -79,7 +78,6 @@ function CuentaDatos() {
       if (!criptoFiltrada || isCancelled.current) {
         setModoOffline(true);
         setIsTxsLoaded(true);
-        showToast("No se ha podido recuperar datos. Se muestran datos guardados.", "error");
         return;
       }
 
@@ -354,7 +352,7 @@ function CuentaDatos() {
 
           {/* Precio actual */}
           <div className="text-sm text-center">
-            {infoCripto && !modoOffline ? (
+            {infoCripto ? (
               <div>
                 <h3 className="text-gray-400 italic">
                   1 {infoCripto.symbol} ≈ {infoCripto.quote.EUR.price.toFixed(2)} €
@@ -391,10 +389,10 @@ function CuentaDatos() {
                   Última actualización: {ultSync}
                 </h3>
               </div>
-            ) : modoOffline ? (
+            ) : modoOffline && !infoCripto ? (
               <div className="flex flex-col items-center justify-center text-yellow-300">
                 <AlertTriangle className="w-6 h-6 mb-1" />
-                <span className="font-semibold">No se pudo actualizar el precio actual. Mostrando datos guardados.</span>
+                <span className="font-semibold">No se pudo mostrar el precio actual. Fallo al conectar con la API.</span>
               </div>
             ) : (
               <div className="h-25 inset-0 flex items-center justify-center pointer-events-none">

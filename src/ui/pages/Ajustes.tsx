@@ -298,6 +298,11 @@ function Ajustes() {
                     )}
                 </>
             )}
+
+            {/* Versión de la aplicación en la esquina inferior derecha (pegado al borde visual) */}
+            <div className="absolute bottom-2 right-2 text-xs text-gray-400 select-none z-50">
+                Versión: v1.1.0
+            </div>
         </div>
     );
 }
