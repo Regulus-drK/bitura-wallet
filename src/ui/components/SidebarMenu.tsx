@@ -18,7 +18,8 @@ const SidebarMenu = () => {
                     src={logoBitura} 
                     alt="Logo Bitura" 
                     draggable="false"
-                    className="w-40 h-20 object-contain"
+                    className="w-40 h-20 object-contain cursor-pointer"
+                    onClick={() => handleLocation("/inicio")}
                 />
             </div>
 

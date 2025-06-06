@@ -11,13 +11,17 @@ import { consultarDireccion, getAllWallets, getMnemonic, getRedSeleccionada, upd
 import { verificarFondosDireccionesBtc } from "../../services/walletService";
 import Spinner from "../components/Spinner";
 import { parseEthResponse, type EthResponse } from "../../types/EthBalance";
+import { useToast } from "../components/Toast";
+import { AlertTriangle } from "lucide-react";
 
 function Cuentas() {
     const { password } = useAuth();
     const { wallets, setWallets } = useWallets();
+    const { showToast } = useToast();
     const [saldos, setSaldos] = useState<Record<string, BigNumber>>({});
     const navigate = useNavigate();
     const [redSeleccionada, setRedSeleccionada] = useState<'mainnet' | 'testnet' | null>(null);
+    const [cuentasOffline, setCuentasOffline] = useState<string[]>([]);
 
     // Efectos React
     useEffect(() => {
@@ -39,28 +43,30 @@ function Cuentas() {
         let isCancelled = false;
 
         const obtenerSaldoBtc = async () => {
-
             const mnemonic = await getMnemonic(password);
-            
+
             for (const wallet of wallets.filter(w => w.tipoMoneda === "BTC" && w.red === redSeleccionada)) {
                 const fondosBtc = await verificarFondosDireccionesBtc(mnemonic, wallet, redSeleccionada);
 
                 if (isCancelled) return;
 
-                if (fondosBtc) {
-                    setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosBtc.totalBtc }));
-                    wallet.ultSaldoGuardado = fondosBtc.totalBtc.toFixed(7);
+                // Si hay error o no hay conexión, NO actualizar datos locales, solo mostrar alerta y modo offline
+                if (!fondosBtc || fondosBtc.error) {
+                    setCuentasOffline(prev => [...prev, wallet.nombre]);
+                    showToast(`No se ha podido recuperar los saldos de ${wallet.nombre}. Se mostrarán datos guardados.`, "error");
+                    continue;
+                }
 
-                    const walletActualizada = await updateWallet(wallet.nombre, wallet, redSeleccionada);
+                setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosBtc.totalBtc }));
+                wallet.ultSaldoGuardado = fondosBtc.totalBtc.toFixed(7);
 
-                    if (walletActualizada) {
-                        const allWallets = await getAllWallets();
-                        setWallets(allWallets);
-                    } else {
-                        console.error('Error al actualizar la wallet en localStorage.');
-                    }
+                const walletActualizada = await updateWallet(wallet.nombre, wallet, redSeleccionada);
+
+                if (walletActualizada) {
+                    const allWallets = await getAllWallets();
+                    setWallets(allWallets);
                 } else {
-                    console.error("Error al obtener los saldos de BTC");
+                    console.error('Error al actualizar la wallet en localStorage.');
                 }
             }
         }
@@ -69,25 +75,27 @@ function Cuentas() {
             for (const wallet of wallets.filter(w => w.tipoMoneda === "ETH")) {
                 let testnet = redSeleccionada === 'testnet' ? true : false;
                 const result = await consultarDireccion(wallet.direccionPublica, '1', testnet);
-                
+
                 if (isCancelled) return;
 
-                if (result) {
-                    const fondosEth = parseEthResponse(result as EthResponse);
+                if (!result) {
+                    setCuentasOffline(prev => [...prev, wallet.nombre]);
+                    showToast(`No se ha podido recuperar los saldos de ${wallet.nombre}. Se mostrarán datos guardados.`, "error");
+                    continue;
+                }
 
-                    setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosEth.balanceEth }));
-                    wallet.ultSaldoGuardado = fondosEth.balanceEth.toFixed(7);
-                    
-                    const walletActualizada = await updateWallet(wallet.nombre, wallet);
+                const fondosEth = parseEthResponse(result as EthResponse);
 
-                    if (walletActualizada) {
-                        const allWallets = await getAllWallets();
-                        setWallets(allWallets);
-                    } else {
-                        console.error('Error al actualizar la wallet en localStorage.');
-                    }
+                setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosEth.balanceEth }));
+                wallet.ultSaldoGuardado = fondosEth.balanceEth.toFixed(7);
+
+                const walletActualizada = await updateWallet(wallet.nombre, wallet);
+
+                if (walletActualizada) {
+                    const allWallets = await getAllWallets();
+                    setWallets(allWallets);
                 } else {
-                    console.error('Error cargando los saldos de ', wallet.nombre);
+                    console.error('Error al actualizar la wallet en localStorage.');
                 }
             }
         }
@@ -112,7 +120,20 @@ function Cuentas() {
     return (
         <div className="flex flex-col items-center h-full p-4 overflow-y-auto">
         <h1 className="text-2xl font-bold mb-5">Cuentas</h1>
-
+        {/* Aviso de modo offline debajo del header */}
+        {(cuentasOffline.length > 0) && (
+            <div className="flex items-center justify-center mb-4 p-3 bg-yellow-900/80 border border-yellow-600 rounded-lg text-yellow-300 font-semibold gap-2">
+                <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                <span>
+                    Mostrando datos guardados. No se ha podido conectar para obtener datos en tiempo real
+                    {cuentasOffline.length === walletsBTC.length + walletsETH.length
+                        ? " de ninguna cuenta."
+                        : cuentasOffline.length === 1
+                            ? " de una cuenta."
+                            : ` de ${cuentasOffline.length} cuentas.`}
+                </span>
+            </div>
+        )}
         {walletsBTC.length === 0 && walletsETH.length === 0 ? (
             <h1 className="text-white bg-neutral-700 mb-2 rounded-xl px-6 py-4 flex text-xl">
             Todavía no hay cuentas creadas. Añada una para empezar.
@@ -154,12 +175,18 @@ function Cuentas() {
                             }
                         </div>
                             <span className="text-sm text-gray-300 flex items-center gap-1">
-                            {saldos[wallet.nombre] == null
+                            {saldos[wallet.nombre] == null && !cuentasOffline.includes(wallet.nombre)
                                 ? (
                                 <>
                                     <Spinner small size={16}/>
                                     <span>{wallet.ultSaldoGuardado} BTC</span>
                                 </>
+                                )
+                                : cuentasOffline.includes(wallet.nombre) ? (
+                                    <>
+                                        <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                                        <span>{wallet.ultSaldoGuardado} BTC</span>
+                                    </>
                                 )
                                 : <span>{saldos[wallet.nombre].toFixed(7)} BTC</span>
                             }
@@ -191,12 +218,18 @@ function Cuentas() {
                             }
                         </div>
                         <span className="text-sm text-gray-300 flex items-center gap-1">
-                        {saldos[wallet.nombre] == null
+                        {saldos[wallet.nombre] == null && !cuentasOffline.includes(wallet.nombre)
                             ? (
                             <>
                                 <Spinner small size={16}/>
                                 <span>{wallet.ultSaldoGuardado} ETH</span>
                             </>
+                            )
+                            : cuentasOffline.includes(wallet.nombre) ? (
+                                <>
+                                    <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                                    <span>{wallet.ultSaldoGuardado} ETH</span>
+                                </>
                             )
                             : <span>{saldos[wallet.nombre].toFixed(7)} ETH</span>
                         }

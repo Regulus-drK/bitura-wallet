@@ -18,6 +18,24 @@ const bip32 = BIP32Factory(ecc);
 // ECPair se usa para firmar transacciones, generar direcciones, importar claves, etc.
 const ECPair = ECPairFactory(ecc);
 
+// Función local para hacer un fetch con timeout, para esperar un máximo de tiempo
+// a diferentes solicitudes
+function fetchConTimeout(url: string, timeout = 30000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  return fetch(url, { signal: controller.signal })
+    .finally(() => clearTimeout(id))
+    .catch((err) => {
+      if (err.name === 'AbortError') {
+        // Lanzar un error específico para timeout
+        throw new Error('Timeout');
+      }
+      throw err;
+    });
+}
+
+
 // Función para validar si un mnemonic es correcto
 export function validarMnemonic(mnemonic: string): boolean {
     return bip39.validateMnemonic(mnemonic);
@@ -252,7 +270,7 @@ export async function verificarFondosDireccionesBtc(
             // Consultar los UTXOs de todas las direcciones derivadas en paralelo
             const respuestas = await Promise.allSettled(
                 batch.map(dir =>
-                fetch(`${apiBase}/address/${dir.address}/utxo`)
+                fetchConTimeout(`${apiBase}/address/${dir.address}/utxo`)
                     .then(r => r.json())
                     .then((utxos) => ({ ...dir, utxos }))
                 )
@@ -287,10 +305,10 @@ export async function verificarFondosDireccionesBtc(
                     vaciasConsecutivas++;
 
                     // Controlamos el error
-                    if (respuesta.reason instanceof TypeError) {
-                        // Controlamos que el error sea que no se ha podido hacer fetch,
-                        // es decir que el usuario no tiene conexión a internet
-                        if (respuesta.reason.message.includes('Failed to fetch')) {
+                    const reason = respuesta.reason;
+                    if (reason instanceof Error) {
+                        // Detectar timeout o fallo de red
+                        if (reason.message === 'Timeout' || reason.message.includes('Failed to fetch')) {
                             numConexionesFallidas++;
                         }
                     }
@@ -311,8 +329,8 @@ export async function verificarFondosDireccionesBtc(
         const child = root.derivePath(`${pathBase}/1/0`);
         const { address } = metodoBtc({ pubkey: Buffer.from(child.publicKey), network });
         if (address) {
-        cambioConFondos = { path: `${pathBase}/1/0`, address, utxos: [], keyPair: child };
-        direccionesConFondos.push(cambioConFondos);
+            cambioConFondos = { path: `${pathBase}/1/0`, address, utxos: [], keyPair: child };
+            direccionesConFondos.push(cambioConFondos);
         }
     }
 
@@ -326,8 +344,15 @@ export async function verificarFondosDireccionesBtc(
         console.log(`✔ No confirmado: ${totalUnconfirmed.div(SATOSHIS_IN_BTC).toFixed(8)} BTC`);
         console.log(`✔ Total: ${totalBtc.toFixed(8)} BTC`)
     } else { // Si hay más fallidas que exitosas, no se devuelve nada (se actua como si el usuario no tuviera internet)
-        console.error(`Ha habido un fallo al consultar los saldos de ${wallet.nombre}. Posiblemente no haya internet disponible. Se devolverá nulo.`)
-        return null;
+        let mensajeError = `Ha habido un fallo al consultar los saldos de ${wallet.nombre}. No se ha podido conectar con la API. Posiblemente no haya internet disponible.`;
+        console.error(mensajeError);
+        return {
+            totalConfirmed: new BigNumber(0),
+            totalUnconfirmed: new BigNumber(0),
+            totalBtc: new BigNumber(0),
+            direccionesConFondos: [],
+            error: true
+        };
     }
 
     return {
@@ -335,6 +360,7 @@ export async function verificarFondosDireccionesBtc(
         totalUnconfirmed,
         totalBtc,
         direccionesConFondos,
+        error: null,
     };
 }
 
@@ -410,7 +436,7 @@ export async function obtenerTxsBtc(
             // Obtener las transacciones asociadas a cada dirección del batch
             const respuestas = await Promise.allSettled(
                 batch.map(dir =>
-                fetch(`${apiBase}/address/${dir.address}/txs`)
+                fetchConTimeout(`${apiBase}/address/${dir.address}/txs`)
                     .then(r => {
                     if (!r.ok) throw new Error(`Error en fetch para ${dir.address}: ${r.statusText}`);
                         return r.json();
@@ -1140,4 +1166,4 @@ export async function enviarEth(
         const mensajeError = error?.reason || error?.message || "Error desconocido al enviar la transacción";
         throw new Error(`Error al enviar la transacción: ${mensajeError}`);
     }
-} 
+}

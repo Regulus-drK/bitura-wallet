@@ -14,6 +14,8 @@ import { obtenerTxsBtc, verificarFondosDireccionesBtc } from "../../services/wal
 import { type ParsedEthResponse, parseEthResponse, type EthResponse } from "../../types/EthBalance";
 import { type BtcTransactionFormatted } from "../../types/BtcBalance";
 import TransiccionPagina from "./TransiccionPagina";
+import { useToast } from "./Toast";
+import { AlertTriangle } from "lucide-react";
 
 function CuentaDatos() {
   const { password } = useAuth();
@@ -29,7 +31,10 @@ function CuentaDatos() {
   const [txsBtc, setTxsBtc] = useState<BtcTransactionFormatted[]>([]);
   const [fondosEth, setFondosEth] = useState<ParsedEthResponse>();
   const [paginaTxEth, setPaginaTxEth] = useState<number>(1);
+  const [modoOffline, setModoOffline] = useState<boolean>(false);
   const navigate = useNavigate();
+
+  const { showToast } = useToast();
 
   const isCancelled = useRef(false);
 
@@ -50,21 +55,33 @@ function CuentaDatos() {
   // Función para cargar los precios y los balances de la cuenta
   const loadPricesYBalances = async () => {
     try {
-      // Reset de variables para hacer aparecer de nuevo los spinner e indicar que está cargando de nuevo
       setSaldos({});
       setFondosEth(undefined);
       setSaldoEur(-1);
       setDatosPrecioActCrypto(null);
       setIsTxsLoaded(false);
+      setModoOffline(false);
 
       const datos = await listarPrecios(); // Llamada a API Java
-      if (isCancelled.current || !datos) return;
+      if (isCancelled.current) return;
+
+      if (!datos) {
+        setModoOffline(true);
+        setIsTxsLoaded(true);
+        showToast("No se ha podido recuperar datos. Se muestran datos guardados.", "error");
+        return;
+      }
 
       const criptoFiltrada = Object.values(datos.data).find(
         (crypto) => crypto.symbol === wallet?.tipoMoneda
       ); // Elegimos solo la cripto de la cuenta asociada
 
-      if (!criptoFiltrada || isCancelled.current) return;
+      if (!criptoFiltrada || isCancelled.current) {
+        setModoOffline(true);
+        setIsTxsLoaded(true);
+        showToast("No se ha podido recuperar datos. Se muestran datos guardados.", "error");
+        return;
+      }
 
       const nuevaRespuesta: CryptoAPIResponse = {
         ...datos,
@@ -81,14 +98,29 @@ function CuentaDatos() {
         if (isCancelled.current) return;
 
         const fondosBtc = await verificarFondosDireccionesBtc(mnemonic, wallet, wallet.red!);
-        if (isCancelled.current || !fondosBtc) return;
+        if (isCancelled.current || !fondosBtc || fondosBtc.error) {
+          setModoOffline(true);
+          setIsTxsLoaded(true);
+          return;
+        }
 
         setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosBtc.totalBtc }));
+        // Solo actualiza los datos locales si hay conexión
         wallet.ultSaldoGuardado = fondosBtc.totalBtc.toFixed(7);
 
         const totalEur = fondosBtc.totalBtc.toNumber() * precioMoneda;
         setSaldoEur(totalEur);
         wallet.ultSaldoGuardadoEur = totalEur;
+
+        // Solo actualiza en localStorage si hay conexión
+        const walletActualizada = await updateWallet(wallet.nombre, wallet, wallet.red);
+        if (isCancelled.current) return;
+        if (walletActualizada) {
+          const allWallets = await getAllWallets();
+          setWallets(allWallets);
+        } else {
+          console.error('Error al actualizar la wallet en localStorage.');
+        }
 
         loadTransaccionesBtc();
       } else { // Caso ETH para cargar fondos
@@ -96,32 +128,40 @@ function CuentaDatos() {
         const result = await consultarDireccion(wallet.direccionPublica, paginaTxEth.toString(), testnet);
 
         if (isCancelled.current) return;
-        
-        if (result) {
-          const fondosEth = parseEthResponse(result as EthResponse);
 
-          setFondosEth(fondosEth);
-          setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosEth.balanceEth }));
-          wallet.ultSaldoGuardado = fondosEth.balanceEth.toFixed(7);
-
-          const totalEur = fondosEth.balanceEth.toNumber() * precioMoneda;
-          setSaldoEur(totalEur);
-          wallet.ultSaldoGuardadoEur = totalEur;
-
+        if (!result) {
+          setModoOffline(true);
           setIsTxsLoaded(true);
+          showToast("No se ha podido recuperar los saldos. Se muestran datos guardados.", "error");
+          return;
+        }
+
+        const fondosEth = parseEthResponse(result as EthResponse);
+
+        setFondosEth(fondosEth);
+        setSaldos(prev => ({ ...prev, [wallet.nombre]: fondosEth.balanceEth }));
+        wallet.ultSaldoGuardado = fondosEth.balanceEth.toFixed(7);
+
+        const totalEur = fondosEth.balanceEth.toNumber() * precioMoneda;
+        setSaldoEur(totalEur);
+        wallet.ultSaldoGuardadoEur = totalEur;
+
+        setIsTxsLoaded(true);
+
+        // Solo actualiza en localStorage si hay conexión
+        const walletActualizada = await updateWallet(wallet.nombre, wallet, wallet.red);
+        if (isCancelled.current) return;
+        if (walletActualizada) {
+          const allWallets = await getAllWallets();
+          setWallets(allWallets);
+        } else {
+          console.error('Error al actualizar la wallet en localStorage.');
         }
       }
-      // Después de sacar los datos y ajustarlos, se actualiza la wallet en el JSON
-      const walletActualizada = await updateWallet(wallet.nombre, wallet, wallet.red);
-      if (isCancelled.current) return;
-
-      if (walletActualizada) { // Se actualiza en memoria
-        const allWallets = await getAllWallets(); 
-        setWallets(allWallets);
-      } else {
-        console.error('Error al actualizar la wallet en localStorage.');
-      }
     } catch (err) {
+      setModoOffline(true);
+      setIsTxsLoaded(true);
+      showToast("No se ha podido recuperar datos. Se muestran datos guardados.", "error");
       console.error("Error al cargar precios o balances:", err);
     }
   };
@@ -258,15 +298,29 @@ function CuentaDatos() {
           </div>
           
         </div>
+        {/* Aviso de modo offline justo debajo del header */}
+        {modoOffline && (
+          <div className="flex items-center justify-center mb-4 p-3 bg-yellow-900/80 border border-yellow-600 rounded-lg text-yellow-300 font-semibold gap-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-400" />
+            <span>
+              Mostrando datos guardados. No se ha podido conectar para obtener datos en tiempo real.
+            </span>
+          </div>
+        )}
         {/* Info de saldo */}
         <div className="bg-neutral-700 shadow max-w-4xl mx-auto rounded-xl text-left p-5 pl-10 pr-10 mb-4">
         {/* Saldo y euros en línea */}
         <div className="flex justify-between items-center mb-2">
           {/* Saldo BTC (o moneda) con spinner si no cargado */}
           <div className="text-lg font-semibold text-white flex items-center gap-2">
-            {saldos[wallet.nombre] == null ? (
+            {saldos[wallet.nombre] == null && !modoOffline ? (
               <>
-                <Spinner small size={16} />
+                <Spinner small size={18} />
+                <span>{wallet.ultSaldoGuardado} {wallet.tipoMoneda}</span>
+              </>
+            ) : modoOffline ? (
+              <>
+                <AlertTriangle className="w-4 h-4 text-yellow-400" />
                 {wallet.ultSaldoGuardado} {wallet.tipoMoneda}
               </>
             ) : (
@@ -278,9 +332,14 @@ function CuentaDatos() {
 
           {/* Saldo en euros con spinner si no cargado */}
           <div className="text-lg text-gray-200 ml-4 flex items-center gap-2">
-            {saldoEur == -1 ? (
+            {saldoEur == -1 && !modoOffline ? (
               <>
-                <Spinner small size={16} />
+                <Spinner small size={18} />
+                <span className="font-medium">{wallet.ultSaldoGuardadoEur.toFixed(2)} €</span>
+              </>
+            ) : modoOffline ? (
+              <>
+                <AlertTriangle className="w-4 h-4 text-yellow-400" />
                 <span className="font-medium">
                   {wallet.ultSaldoGuardadoEur.toFixed(2)} €
                 </span>
@@ -295,7 +354,7 @@ function CuentaDatos() {
 
           {/* Precio actual */}
           <div className="text-sm text-center">
-            {infoCripto ? (
+            {infoCripto && !modoOffline ? (
               <div>
                 <h3 className="text-gray-400 italic">
                   1 {infoCripto.symbol} ≈ {infoCripto.quote.EUR.price.toFixed(2)} €
@@ -331,6 +390,11 @@ function CuentaDatos() {
                 <h3 className="text-gray-400 mt-2">
                   Última actualización: {ultSync}
                 </h3>
+              </div>
+            ) : modoOffline ? (
+              <div className="flex flex-col items-center justify-center text-yellow-300">
+                <AlertTriangle className="w-6 h-6 mb-1" />
+                <span className="font-semibold">No se pudo actualizar el precio actual. Mostrando datos guardados.</span>
               </div>
             ) : (
               <div className="h-25 inset-0 flex items-center justify-center pointer-events-none">

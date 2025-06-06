@@ -1,22 +1,21 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import TransiccionPagina from "./TransiccionPagina";
-import { ArrowLeft, CheckCircle, CircleX, Trash2, X } from "lucide-react";
+import { ArrowLeft, Trash2, X } from "lucide-react";
 import type { WalletInfo } from "../../types/BituraStore";
 import { useEffect, useRef, useState } from "react";
 import { useWallets } from "../../context/WalletContext";
 import { deleteWallet, getAllWallets, getRedSeleccionada, updateWallet } from "../../services/apiService";
 import Spinner from "./Spinner";
-import { error } from "console";
+import { useToast } from "./Toast";
 
 function CuentaAjustes() {
     const { wallets, setWallets } = useWallets();
     const location = useLocation();
     const wallet: WalletInfo = location.state.wallet;
     const navigate = useNavigate();
+    const { showToast } = useToast();
 
-    const entradaTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const salidaTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const ocultarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const toastResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const [currentNombreWallet, setCurrentNombreWallet] = useState<string>(wallet.nombre);
     const [newNombreWallet, setNewNombreWallet] = useState<string>(wallet.nombre);
@@ -25,9 +24,6 @@ function CuentaAjustes() {
     const [nameTooLong, setNameTooLong] = useState<boolean>(false);
     const [redBtcSeleccionada, setRedBtcSeleccionada] = useState<'mainnet' | 'testnet' | undefined>(undefined);
 
-    const [animacionEntrada, setAnimacionEntrada] = useState(false);
-    const [mostrarToast, setMostrarToast] = useState(false);
-    const [salidaToast, setSalidaToast] = useState(false);
     const [nombreChangedSuccess, setNombreChangedSuccess] = useState<boolean | null>(null);
 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -49,14 +45,16 @@ function CuentaAjustes() {
     // los requisitos necesarios para ser asignado
     const handleWalletsName = (): boolean => {
         if (!redBtcSeleccionada) return false;
-        
+
         let valid = true;
         if (newNombreWallet.length === 0) {
             setNameEmpty(true);
+            showToast("Introduzca un nombre", "error");
             valid = false;
         }
         if (newNombreWallet.length > 20) {
             setNameTooLong(true);
+            showToast("El nombre no puede superar los 20 caracteres", "error");
             valid = false;
         }
         const nombreMinusculas = newNombreWallet.trim().toLowerCase();
@@ -76,16 +74,26 @@ function CuentaAjustes() {
 
         if (nombreDuplicado) {
             setNameTaken(true);
+            showToast("El nombre elegido ya está en uso", "error");
             valid = false;
         }
         return valid;
     };
 
+    // Limpia los flags de error y éxito tras mostrar el toast (tras la animación de salida)
+    const resetNameFlags = () => {
+        if (toastResetTimeoutRef.current) clearTimeout(toastResetTimeoutRef.current);
+        toastResetTimeoutRef.current = setTimeout(() => {
+            setNameTaken(false);
+            setNameEmpty(false);
+            setNameTooLong(false);
+            setNombreChangedSuccess(null); // SIEMPRE desbloquea el input y botón
+        }, 3000); // igual que el tiempo de ocultar el toast
+    };
+
     // Función para cambiar el nombre a la wallet
     const handleNombreChange = async () => {
         if (!redBtcSeleccionada) return;
-
-        resetearToasts();
 
         if (handleWalletsName()) {
             wallet.nombre = newNombreWallet;
@@ -96,29 +104,17 @@ function CuentaAjustes() {
                 const wallets = await getAllWallets();
                 setWallets(wallets);
                 setCurrentNombreWallet(newNombreWallet);
+                showToast("¡Nombre cambiado con éxito!", "success");
             } else {
                 setNombreChangedSuccess(false);
+                showToast("Error al cambiar el nombre", "error");
             }
+            resetNameFlags();
         } else {
             setNombreChangedSuccess(false);
+            // Ya se muestra el toast correspondiente en handleWalletsName
+            resetNameFlags();
         }
-
-        setAnimacionEntrada(false);
-        setMostrarToast(true);
-        setSalidaToast(false);
-
-        entradaTimeoutRef.current = setTimeout(() => {
-            setAnimacionEntrada(true); // entrada
-        }, 10);
-
-        salidaTimeoutRef.current = setTimeout(() => {
-            setSalidaToast(true); // salida
-        }, 2000);
-
-        ocultarTimeoutRef.current = setTimeout(() => {
-            setMostrarToast(false); // eliminar del DOM
-            setNombreChangedSuccess(null);
-        }, 3000);
     };
 
     // Función para borrar la cuenta seleccionada
@@ -137,7 +133,7 @@ function CuentaAjustes() {
                 const wallets = await getAllWallets();
                 setWallets(wallets);
             } else {
-                console.error('Error al borrar la cuenta: ', error)
+                console.error('Error al borrar la cuenta: ')
                 return;
             }
             // Pequeño retraso
@@ -153,12 +149,12 @@ function CuentaAjustes() {
         }
     };
 
-    // Función para reiniciar los timers del toast
-    const resetearToasts = () => {
-        if (entradaTimeoutRef.current) clearTimeout(entradaTimeoutRef.current);
-        if (salidaTimeoutRef.current) clearTimeout(salidaTimeoutRef.current);
-        if (ocultarTimeoutRef.current) clearTimeout(ocultarTimeoutRef.current);
-    };
+    // Limpieza del timer al desmontar
+    useEffect(() => {
+        return () => {
+            if (toastResetTimeoutRef.current) clearTimeout(toastResetTimeoutRef.current);
+        };
+    }, []);
 
     return(
         <TransiccionPagina>
@@ -188,18 +184,11 @@ function CuentaAjustes() {
                         <input
                         type="text"
                         value={newNombreWallet}
-                        disabled={mostrarToast && nombreChangedSuccess === true}
+                        disabled={nombreChangedSuccess === true}
                         spellCheck="false"
                         onChange={(e) => {
                             const valor = e.target.value;
                             setNewNombreWallet(valor);
-
-                            // Si el usuario escribe, ocultamos el toast
-                            if (mostrarToast) {
-                                resetearToasts();
-                                setMostrarToast(false);
-                                setNombreChangedSuccess(null);
-                            }
 
                             // Validaciones en caliente
                             if (nameEmpty && valor.length > 0) setNameEmpty(false);
@@ -326,39 +315,6 @@ function CuentaAjustes() {
                             </div>
                         </div>
                     </div>
-                )}
-                {/* TOAST */}
-                {mostrarToast && (
-                    <>
-                        {!nombreChangedSuccess && (
-                            <div
-                                className={`absolute left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl z-100
-                                shadow-lg flex items-center gap-3 text-white bg-red-500 transition-all duration-500 ease-in-out
-                                ${salidaToast ? "top-0 opacity-0" : animacionEntrada ? "top-6 opacity-100" : "top-0 opacity-0"}`}
-                            >
-                                <CircleX className="w-5 h-5 text-white" />
-                                {nameTaken && (
-                                    <span className="font-semibold">El nombre elegido ya está en uso</span>
-                                )}
-                                {nameEmpty && (
-                                    <span className="font-semibold">Introduzca un nombre</span>
-                                )}
-                                {nameTooLong && (
-                                    <span className="font-semibold">El nombre no puede superar los 20 caracteres</span>
-                                )}
-                            </div>
-                        )}
-                        {nombreChangedSuccess && (
-                            <div
-                                className={`absolute left-1/2 transform -translate-x-1/2 px-5 py-3 rounded-xl z-100
-                                shadow-lg flex items-center gap-3 text-white bg-emerald-600 transition-all duration-500 ease-in-out
-                                ${salidaToast ? "top-0 opacity-0" : animacionEntrada ? "top-6 opacity-100" : "top-0 opacity-0"}`}
-                            >
-                                <CheckCircle className="w-5 h-5 text-white" />
-                                <span className="font-semibold">¡Nombre cambiado con éxito!</span>
-                            </div>
-                        )}
-                    </>
                 )}
             </div>
         </TransiccionPagina>

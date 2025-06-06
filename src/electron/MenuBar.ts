@@ -61,27 +61,6 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
                     ventanaConfirmarDeleteConfigFiles();
                 }
             }
-            // **SOLO DEV**
-            // {
-            //     label: 'Consola de desarrollador',
-            //     accelerator: 'Ctrl+Shift+I',
-            //     click: () => {
-            //         const win = BrowserWindow.getFocusedWindow();
-            //         if (win) {
-            //             win.webContents.toggleDevTools();
-            //         }
-            //     }
-            // },
-            // {
-            //     label: 'Recargar (dev)',
-            //     accelerator: 'Ctrl+R',
-            //     click: () => {
-            //         const win = BrowserWindow.getFocusedWindow();
-            //         if (win) {
-            //             win.reload();
-            //         }
-            //     }
-            // },
         ],
     }
 ];

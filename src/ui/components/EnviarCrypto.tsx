@@ -10,7 +10,7 @@ import { calcularEnvioTotalBtc, calcularEnvioTotalEth, enviarBtc, enviarEth, esD
 import btcIcon from "../../assets/crypto/bitcoin.png";
 import ethIcon from "../../assets/crypto/ether.png";
 import Spinner from "../components/Spinner";
-import { ArrowLeft, ArrowRight, ArrowUp, CircleCheckBig, CircleX, House } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, CircleCheckBig, CircleX, House, AlertTriangle } from "lucide-react";
 import type { BtcAddressUtxo } from "../../types/BtcBalance";
 import { parseEthResponse, type EthResponse } from "../../types/EthBalance";
 
@@ -29,6 +29,9 @@ function EnviarCrypto() {
     const [isSameAddress, setIsSameAddress] = useState<boolean>(false);
     const [saldoWalletComprobado, setSaldoWalletComprobado] = useState<boolean>(false);
     const [precioActCrypto, setPrecioActCrypto] = useState<number>(1);
+    const [modoOffline, setModoOffline] = useState<boolean>(false);
+    const [cuentasOffline, setCuentasOffline] = useState<string[]>([]);
+    const [falloRecomprobandoSaldo, setFalloRecomprobandoSaldo] = useState<boolean>(false);
 
     const [cantidadAenviar, setCantidadAenviar] = useState<string>("");
     const [cantidadAenviarEur, setCantidadAenviarEur] = useState<number>(0);
@@ -93,10 +96,9 @@ function EnviarCrypto() {
                 const result = await verificarFondosDireccionesBtc(mnemonic, w, redSeleccionada);
                 if (cancelado) return;
 
-                if (result) {
+                if (result && !result.error) {
                     setSaldos(prev => ({ ...prev, [w.nombre]: result ? result.totalBtc : null }));
                     w.ultSaldoGuardado = result.totalBtc.toFixed(7);
-            
                     const walletActualizada = await updateWallet(w.nombre, w, redSeleccionada);
 
                     if (walletActualizada) {
@@ -106,7 +108,9 @@ function EnviarCrypto() {
                         console.error('Error al actualizar la wallet en localStorage.');
                     }
                 } else {
-                    console.error('Error cargando los saldos de ', w.nombre)
+                    setModoOffline(true);
+                    setSaldos(prev => ({ ...prev, [w.nombre]: null }));
+                    setCuentasOffline(prev => [...prev, w.nombre]);
                 }
             }
         };
@@ -122,7 +126,6 @@ function EnviarCrypto() {
                     const fondosEth = parseEthResponse(result as EthResponse);
                     setSaldos(prev => ({ ...prev, [w.nombre]: fondosEth.balanceEth }));
                     w.ultSaldoGuardado = fondosEth.balanceEth.toFixed(7);
-                    
                     const walletActualizada = await updateWallet(w.nombre, w);
 
                     if (walletActualizada) {
@@ -132,7 +135,9 @@ function EnviarCrypto() {
                         console.error('Error al actualizar la wallet en localStorage.');
                     }
                 } else {
-                    console.error('Error cargando los saldos de ', w.nombre);
+                    setModoOffline(true);
+                    setSaldos(prev => ({ ...prev, [w.nombre]: null }));
+                    setCuentasOffline(prev => [...prev, w.nombre]);
                 }
             }
         };
@@ -203,6 +208,8 @@ function EnviarCrypto() {
         if (!password) return;
         const mnemonic = await getMnemonic(password);
 
+        setFalloRecomprobandoSaldo(false); // reset al intentar recomprobar
+
         if (wallet.tipoMoneda === 'BTC') {
             try {
                 const result = await verificarFondosDireccionesBtc(mnemonic, wallet, redSeleccionada!);
@@ -213,7 +220,10 @@ function EnviarCrypto() {
                     return;
                 }
                 setSaldoWalletComprobado(false);
+                setFalloRecomprobandoSaldo(true); // No se pudo recuperar saldo
             } catch (err) {
+                setSaldoWalletComprobado(false);
+                setFalloRecomprobandoSaldo(true);
                 console.error('Error comprobando saldos: ', err);
                 return;
             }
@@ -230,7 +240,10 @@ function EnviarCrypto() {
                     return;               
                 }
                 setSaldoWalletComprobado(false);
+                setFalloRecomprobandoSaldo(true);
             } catch (err) {
+                setSaldoWalletComprobado(false);
+                setFalloRecomprobandoSaldo(true);
                 console.error('Error comprobando saldos: ', err);
                 return;
             }
@@ -419,6 +432,7 @@ function EnviarCrypto() {
         setShouldExecuteTransaction(false);
         reconsultarSaldoCuentaSelec(wallet!);
         setIsTransactionSuccessful(null);
+        setFalloRecomprobandoSaldo(false);
     }
 
     // Función para verificar si se debería ejecutar la transacción
@@ -507,11 +521,14 @@ function EnviarCrypto() {
     // Función para mostrar el cuadro de la wallet
     const renderWalletItem = (w: WalletInfo, icon: string) => {
         const saldo = saldos[w.nombre];
-        const isLoading = saldo == null;
-        const isEnabled = saldo?.isGreaterThan(0);
+        const isLoading = saldo == null && !cuentasOffline.includes(w.nombre);
+        // Solo habilitar si no está en cuentasOffline y tiene saldo
+        const isEnabled = !cuentasOffline.includes(w.nombre) && saldo?.isGreaterThan(0);
         const saldoDisplay = isLoading
             ? <><Spinner small size={16} /> <span>{w.ultSaldoGuardado} {w.tipoMoneda}</span></>
-            : `${saldo.toFixed(7)} ${w.tipoMoneda}`;
+            : cuentasOffline.includes(w.nombre)
+                ? <><AlertTriangle className="w-4 h-4 text-yellow-400" /> <span>{w.ultSaldoGuardado} {w.tipoMoneda}</span></>
+                : `${saldo?.toFixed(7)} ${w.tipoMoneda}`;
 
         const baseStyle = "flex items-center justify-between px-5 py-3 rounded-xl transition";
         const bgStyle = isEnabled ? "bg-neutral-700 hover:bg-neutral-600 cursor-pointer border border-neutral-600" : "bg-neutral-900 opacity-60 cursor-not-allowed border border-neutral-700";
@@ -562,6 +579,15 @@ function EnviarCrypto() {
    return (
     <div className="flex flex-col items-center justify-start min-h-[400px] p-6">
         <h1 className="text-2xl font-bold mb-5">Enviar</h1>
+        {/* Aviso de modo offline debajo del header */}
+        {modoOffline && (
+            <div className="flex items-center justify-center mb-4 p-3 bg-yellow-900/80 border border-yellow-600 rounded-lg text-yellow-300 font-semibold gap-2">
+                <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                <span>
+                    Mostrando datos guardados. No se ha podido conectar para obtener datos en tiempo real.
+                </span>
+            </div>
+        )}
         {!(saldoConFeeInsuficiente === false && saldoInsuficiente === false) ? (
             <>
                 {!walletReceived ? (
@@ -658,8 +684,13 @@ function EnviarCrypto() {
                                 )}
                             </div>
                             <p className="text-md font-medium text-gray-300">
-                                Saldo: {saldos[wallet!.nombre] ? saldos[wallet!.nombre]?.toFixed(7) : wallet?.ultSaldoGuardado} {wallet?.tipoMoneda} {' '}
-                                ≈ {precioActCrypto !== 1 && saldos[wallet!.nombre] ? ((Number(saldos[wallet!.nombre]) * precioActCrypto).toFixed(2)) : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
+                                Saldo: {modoOffline
+                                    ? wallet?.ultSaldoGuardado
+                                    : (saldos[wallet!.nombre] ? saldos[wallet!.nombre]?.toFixed(7) : wallet?.ultSaldoGuardado)
+                                } {wallet?.tipoMoneda} {' '}
+                                ≈ {precioActCrypto !== 1 && saldos[wallet!.nombre] && !modoOffline
+                                    ? ((Number(saldos[wallet!.nombre]) * precioActCrypto).toFixed(2))
+                                    : wallet?.ultSaldoGuardadoEur.toFixed(2)} €
                             </p>
                         </div>
 
@@ -825,10 +856,15 @@ function EnviarCrypto() {
                                 <div className="mt-7.5 flex flex-col items-center text-center">
                                     <button
                                         onClick={handleBotonEnviar}
-                                        disabled={!saldoWalletComprobado || comision.length === 0 || cantidadAenviar.length === 0}
+                                        disabled={
+                                            !saldoWalletComprobado ||
+                                            comision.length === 0 ||
+                                            cantidadAenviar.length === 0 ||
+                                            falloRecomprobandoSaldo // Deshabilita si hay fallo recomprobando saldo
+                                        }
                                         className={`px-4 py-2 rounded-xl shadow-md border flex items-center gap-2 transition duration-300
                                             ${
-                                                !saldoWalletComprobado || comision.length === 0 || cantidadAenviar.length === 0
+                                                !saldoWalletComprobado || comision.length === 0 || cantidadAenviar.length === 0 || falloRecomprobandoSaldo
                                                     ? "bg-neutral-600 text-gray-300 cursor-not-allowed border-gray-400"
                                                     : "border-gray-500 bg-neutral-800 cursor-pointer text-white hover:bg-neutral-900"
                                             }`}
@@ -837,10 +873,16 @@ function EnviarCrypto() {
                                         Enviar
                                     </button>
                                 </div>
-                                {!saldoWalletComprobado && (
+                                {!saldoWalletComprobado && !falloRecomprobandoSaldo && (
                                     <div className="text-lg mt-4 text-white flex items-center gap-4 justify-center font-semibold mb-4">
                                         <Spinner small size={16} />
                                         Recomprobando saldos...
+                                    </div>
+                                )}
+                                {falloRecomprobandoSaldo && (
+                                    <div className="text-lg mt-4 text-red-400 flex flex-col items-center gap-2 justify-center font-semibold mb-4">
+                                        <span>No se han podido recomprobar los saldos de la cuenta.</span>
+                                        <span>Por favor, inténtelo más tarde.</span>
                                     </div>
                                 )}
                                 {saldoInsuficiente && (
@@ -993,11 +1035,11 @@ function EnviarCrypto() {
                     <div className="text-white text-lg max-w-md break-words text-center px-4">
                         <h1>{txError}</h1>
                     </div>
-                    {txError.toLowerCase().includes("TIMEOUT") && (
+                    {(txError.includes("TIMEOUT") || txError.includes("timeout")) && (
                         <div className="text-white text-lg">
-                            <h1>Tiempo expirado al intentar enviar la transacción. Si este error prosigue, se debe a que el nodo de la red se encuentra saturado.</h1>
+                            <h1>Tiempo expirado al intentar enviar la transacción. Si este error prosigue, se debe a que el nodo de la red se encuentra saturado. Espere un tiempo para verificar que la transacción no está en cola.</h1>
                             {redSeleccionada === 'testnet' && (
-                                <h1 className="text-amber-400 mt-5">Se encuentra operando en Testnet. Es frecuente que a veces la red de pruebas se encuentre saturada. Inténtelo más tarde.</h1>
+                                <h1 className="text-amber-400 mt-5">Se encuentra operando en Testnet. Es frecuente que a veces la red de pruebas se encuentre saturada. Si la transacción no se efectua automáticamente dentro de unos 10 minutos, inténtelo más tarde.</h1>
                             )}
                         </div>
                     )}
